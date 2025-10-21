@@ -1,41 +1,86 @@
-# 经营码二维码文件夹
+# 经营码二维码目录
 
-## 使用说明
+## 说明
 
-当启用经营码收款模式时，请将您的支付宝经营码二维码文件放置在此目录中。
+此目录用于存放支付宝经营码二维码图片。
 
-## 文件要求
+## 使用步骤
 
-- **文件名**: `business_qr.png`
-- **格式**: PNG、JPG、GIF
-- **大小**: 建议不超过1MB
-- **分辨率**: 建议300x300像素或更高
+### 1. 获取经营码
 
-## 如何获取经营码二维码
+登录支付宝商家中心，获取您的经营码二维码图片。
 
-1. 打开支付宝APP
-2. 进入"商家服务"
-3. 点击"经营码"或"收钱码"
-4. 保存二维码图片到手机
-5. 将图片上传到此目录并重命名为 `business_qr.png`
+### 2. 保存二维码
+
+将二维码图片保存为 `business_qr.png` 并放置在此目录。
+
+```bash
+# 示例
+cp /path/to/your/alipay_qrcode.png business_qr.png
+```
+
+### 3. 验证
+
+启动服务后，访问：
+
+```
+http://localhost:8080/qrcode?type=business&token=今日token
+```
+
+应该能看到您上传的二维码图片。
 
 ## 注意事项
 
-- 经营码二维码必须是有效的支付宝收款码
-- 请确保二维码清晰，避免损坏或模糊
-- 定期检查二维码是否仍然有效
-- 如果更换了经营码，请及时更新此文件
+1. **文件格式**: 支持 PNG、JPG、JPEG 格式
+2. **文件大小**: 建议不超过 2MB
+3. **图片质量**: 确保二维码清晰可扫描
+4. **权限设置**: 确保程序有读取权限
 
-## 文件结构
+## 安全
 
+- 二维码访问需要 token 验证
+- Token 每天自动更新
+- 只有知道 token 的人才能访问
+
+## 配置
+
+在 `configs/config.yaml` 中配置：
+
+```yaml
+payment:
+  business_qr_mode:
+    enabled: true
+    qr_code_path: "./qrcode/business_qr.png"
 ```
-qrcode/
-├── README.md           # 本说明文件
-└── business_qr.png     # 您的经营码二维码（需要上传）
+
+## 故障排除
+
+### 问题：无法访问二维码
+
+**解决方案**:
+1. 检查文件是否存在
+2. 检查文件权限
+3. 检查 token 是否正确
+4. 查看服务日志
+
+### 问题：二维码显示不清晰
+
+**解决方案**:
+1. 使用更高分辨率的图片
+2. 确保原始二维码质量
+3. 避免过度压缩
+
+## 示例
+
+```bash
+# 上传二维码
+cp ~/Downloads/alipay_business_qr.png business_qr.png
+
+# 验证上传
+ls -lh business_qr.png
+
+# 测试访问（获取今日token）
+TOKEN=$(echo -n "qrcode_access_$(date +%Y-%m-%d)" | md5sum | cut -d' ' -f1)
+curl "http://localhost:8080/qrcode?type=business&token=$TOKEN" > test.png
 ```
 
-## 安全提醒
-
-- 请妥善保管您的经营码二维码
-- 不要在不可信的环境中分享该文件
-- 定期更换经营码以提高安全性 

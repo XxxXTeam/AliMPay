@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>支付错误</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 50px;
+            background-color: #f5f5f5;
+        }
+        .error-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff1f0;
+            border: 1px solid #ffa39e;
+            padding: 30px;
+            border-radius: 8px;
+        }
+        h1 {
+            color: #cf1322;
+            margin-top: 0;
+        }
+        p {
+            color: #595959;
+            font-size: 16px;
+        }
+        .error-message {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            color: #cf1322;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <h1>支付请求失败</h1>
+        <p>抱歉，我们无法处理您的支付请求。请检查您的参数是否正确，或联系网站管理员。</p>
+        <div class="error-message">
+            错误信息：{{ .error }}
+        </div>
+    </div>
+</body>
+</html>
+

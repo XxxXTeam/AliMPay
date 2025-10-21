@@ -1,41 +1,43 @@
-# Composer
-/vendor/
-composer.lock
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+alimpay
 
-# Environment configuration
-.env
-.env.local
-.env.*.local
+# Test binary, built with `go test -c`
+*.test
 
-# Logs
-/logs/
-*.log
+# Output of the go coverage tool
+*.out
 
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# Config files with sensitive data
+configs/alipay.yaml
+configs/config.yaml
+
+# Data directories
+data/
+logs/
+qrcodes/
+*.py
+*.sh
 # IDE
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
 *~
+*.log
+config.yaml
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Cache
-/cache/
-/tmp/
-
-# Test coverage
-/coverage/
-
-# Node modules (if adding frontend)
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# Build artifacts
-/build/
-/dist/ 
-
-alipayPublicKey_RSA2.txt

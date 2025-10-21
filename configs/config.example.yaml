@@ -1,0 +1,110 @@
+# AliMPay Golang Version Configuration
+# 支付宝码支付系统配置文件
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "release"  # debug, release, test
+  read_timeout: 60
+  write_timeout: 60
+
+alipay:
+  # 支付宝网关地址
+  server_url: "https://openapi.alipay.com"
+  
+  # 应用ID - 请填写您的AppId
+  app_id: ""
+  
+  # 应用私钥 - 请填写您的应用私钥
+  private_key: ""
+  
+  # 支付宝公钥 - 请填写您的支付宝公钥
+  alipay_public_key: ""
+  
+  # 转账用户ID - 请填写您的支付宝用户ID
+  transfer_user_id: ""
+  
+  # 签名方式
+  sign_type: "RSA2"
+  
+  # 编码格式
+  charset: "UTF-8"
+  
+  # 返回格式
+  format: "json"
+
+database:
+  type: "sqlite3"
+  path: "./data/alimpay.db"
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600  # seconds
+
+payment:
+  # 最大等待时间（秒）
+  max_wait_time: 300
+  
+  # 检查间隔（秒）
+  check_interval: 3
+  
+  # 查询历史记录的时间范围（分钟）
+  query_minutes_back: 30
+  
+  # 订单超时时间（秒）
+  order_timeout: 300
+  
+  # 是否启用自动清理过期订单
+  auto_cleanup: true
+  
+  # 二维码尺寸
+  qr_code_size: 300
+  
+  # 二维码边距
+  qr_code_margin: 10
+  
+  # 经营码收款配置
+  business_qr_mode:
+    enabled: true
+    qr_code_path: "./qrcode/business_qr.png"
+    amount_offset: 0.01
+    match_tolerance: 300
+    payment_timeout: 300
+  
+  # 防风控URL配置
+  anti_risk_url:
+    enabled: true
+    outer_app_id: "20000218"
+    inner_app_id: "20000116"
+    mdeduct_landing_url: "https://render.alipay.com/p/c/mdeduct-landing"
+    render_scheme_url: "https://render.alipay.com/p/s/i"
+
+merchant:
+  # 商户ID（系统自动生成，首次运行后填充）
+  id: ""
+  
+  # 商户密钥（系统自动生成，首次运行后填充）
+  key: ""
+  
+  # 费率
+  rate: 96
+
+logging:
+  level: "info"  # debug, info, warn, error
+  format: "json"  # json, console
+  output: "file"  # file, stdout, both
+  file_path: "./logs/alimpay.log"
+  max_size: 100  # megabytes
+  max_backups: 10
+  max_age: 30  # days
+  compress: true
+
+monitor:
+  # 监控服务启用
+  enabled: true
+  
+  # 监控间隔（秒）
+  interval: 30
+  
+  # 监控锁超时（秒）
+  lock_timeout: 300
+

@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>码支付 - 支付宝支付</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 
+                         'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #1890ff;
+            font-size: 28px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .header h1::before {
+            content: "💳";
+            font-size: 32px;
+        }
+        
+        .header p {
+            color: #8c8c8c;
+            font-size: 14px;
+        }
+        
+        .alert-warning {
+            background: linear-gradient(135deg, #fff4e6 0%, #ffe7ba 100%);
+            border-left: 4px solid #faad14;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: start;
+            gap: 8px;
+        }
+        
+        .alert-warning::before {
+            content: "⚠️";
+            font-size: 18px;
+        }
+        
+        .alert-warning strong {
+            color: #d46b08;
+        }
+        
+        .order-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .order-info h3 {
+            color: #262626;
+            font-size: 16px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e8e8e8;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px 0;
+        }
+        
+        .info-label {
+            color: #595959;
+            font-size: 14px;
+        }
+        
+        .info-value {
+            font-weight: 600;
+            color: #262626;
+            font-size: 14px;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-all;
+        }
+        
+        .amount {
+            font-size: 28px !important;
+            color: #f5222d !important;
+            font-weight: 700 !important;
+        }
+        
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .status.pending {
+            background: linear-gradient(135deg, #fff7e6 0%, #ffe7ba 100%);
+            color: #d46b08;
+            border: 2px solid #ffd591;
+        }
+        
+        .status.pending::before {
+            content: "⏳";
+            font-size: 20px;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        .status.success {
+            background: linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%);
+            color: #52c41a;
+            border: 2px solid #b7eb8f;
+        }
+        
+        .status.success::before {
+            content: "✅";
+            font-size: 20px;
+        }
+        
+        .status.expired {
+            background: #f5f5f5;
+            color: #8c8c8c;
+            border: 2px solid #d9d9d9;
+        }
+        
+        .status.expired::before {
+            content: "⌛";
+            font-size: 20px;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .countdown {
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            background: linear-gradient(135deg, #fff1f0 0%, #ffccc7 100%);
+            color: #cf1322;
+            border: 2px solid #ffa39e;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+        }
+        
+        .countdown .time {
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .countdown.expired {
+            background: #f5f5f5;
+            color: #8c8c8c;
+            border: 2px solid #d9d9d9;
+        }
+        
+        .qr-code {
+            text-align: center;
+            margin: 25px 0;
+        }
+        
+        .qr-code p {
+            color: #595959;
+            margin-bottom: 15px;
+            font-size: 15px;
+        }
+        
+        .qr-img-wrapper {
+            display: inline-block;
+            padding: 15px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .qr-code img {
+            width: 240px;
+            height: 240px;
+            border-radius: 8px;
+            display: block;
+        }
+        
+        .payment-tips {
+            background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
+            border: 2px solid #91d5ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 20px;
+        }
+        
+        .payment-tips h4 {
+            color: #0050b3;
+            font-size: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .payment-tips h4::before {
+            content: "💡";
+            font-size: 18px;
+        }
+        
+        .payment-tips ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .payment-tips li {
+            margin: 8px 0;
+            color: #595959;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .buttons {
+            text-align: center;
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #1890ff 0%, #0050b3 100%);
+            color: white;
+            border: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(24, 144, 255, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #1890ff 0%, #0050b3 100%);
+            font-size: 18px;
+            padding: 16px 24px;
+        }
+        
+        .btn-primary::before {
+            content: "📱 ";
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #f5f5f5 0%, #d9d9d9 100%);
+            color: #595959;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+        
+        .btn-secondary::before {
+            content: "🔍 ";
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #1890ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            .qr-code img {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .amount {
+                font-size: 24px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>码支付</h1>
+            <p>安全、快速的支付体验</p>
+        </div>
+
+        {{if .AmountAdjusted}}
+        <div class="alert-warning">
+            <div>
+                <strong>注意：</strong> {{.AdjustmentNote}}
+            </div>
+        </div>
+        {{end}}
+        
+        <div class="order-info">
+            <h3>订单信息</h3>
+            <div class="info-item">
+                <span class="info-label">商品名称</span>
+                <span class="info-value">{{.Name}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">订单号</span>
+                <span class="info-value">{{.OutTradeNo}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">内部交易号</span>
+                <span class="info-value">{{.TradeNo}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">支付金额</span>
+                <span class="info-value amount">¥{{printf "%.2f" .PaymentAmount}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">支付方式</span>
+                <span class="info-value">支付宝</span>
+            </div>
+            {{if .SiteName}}
+            <div class="info-item">
+                <span class="info-label">商户名称</span>
+                <span class="info-value">{{.SiteName}}</span>
+            </div>
+            {{end}}
+        </div>
+        
+        <div class="status pending" id="paymentStatus">
+            等待支付...
+        </div>
+        
+        <div class="countdown" id="countdownDisplay">
+            剩余支付时间：<span class="time" id="countdown">05:00</span>
+        </div>
+        
+        {{if .BusinessQrMode}}
+            <div class="qr-code">
+                <p>请使用支付宝扫描下方二维码完成支付</p>
+                <div class="qr-img-wrapper">
+                    <img src="{{.QrCodeURL}}" alt="经营码收款" id="qrcodeImg">
+                </div>
+            </div>
+            <div class="payment-tips">
+                <h4>支付提示</h4>
+                <ul>
+                    {{range .PaymentTips}}
+                        <li>{{.}}</li>
+                    {{end}}
+                </ul>
+            </div>
+        {{else}}
+            <div class="qr-code">
+                <p>请使用支付宝扫描下方二维码完成支付</p>
+                <div class="qr-img-wrapper">
+                    <img src="data:image/png;base64,{{.QrCode}}" alt="支付宝支付" id="qrcodeImg">
+                </div>
+            </div>
+            <div class="payment-tips">
+                <h4>支付提示</h4>
+                <ul>
+                    <li>请在5分钟内完成支付，超时订单将自动作废。</li>
+                    <li>支付时请按照提示金额准确支付。</li>
+                    <li>支付完成后，页面将自动检测并跳转。</li>
+                </ul>
+            </div>
+        {{end}}
+
+        <div class="buttons">
+            {{if and .PaymentURL (ne .PaymentURL "")}}
+            <a href="{{.PaymentURL}}" class="btn btn-primary" id="openInAlipay">打开支付宝App支付</a>
+            {{end}}
+            <button class="btn btn-secondary" onclick="checkOrderStatus()" id="checkBtn">
+                我已支付，查询订单状态
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 配置
+        const CONFIG = {
+            outTradeNo: '{{.OutTradeNo}}',
+            pid: '{{.PID}}',
+            returnUrl: '{{.ReturnURL}}',
+            countdownDuration: 300, // 5分钟
+            checkInterval: 5000,    // 5秒检查一次
+        };
+
+        let countdownInterval = null;
+        let checkInterval = null;
+        
+        // 倒计时功能
+        function startCountdown(duration) {
+            let timer = duration;
+            const display = document.getElementById('countdown');
+            const countdownDisplay = document.getElementById('countdownDisplay');
+            const statusElement = document.getElementById('paymentStatus');
+
+            countdownInterval = setInterval(function () {
+                const minutes = parseInt(timer / 60, 10);
+                const seconds = parseInt(timer % 60, 10);
+
+                const minutesStr = minutes < 10 ? "0" + minutes : minutes;
+                const secondsStr = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = minutesStr + ":" + secondsStr;
+
+                if (--timer < 0) {
+                    clearInterval(countdownInterval);
+                    clearInterval(checkInterval);
+                    statusElement.textContent = '订单已超时';
+                    statusElement.className = 'status expired';
+                    countdownDisplay.textContent = '订单已过期，请重新下单';
+                    countdownDisplay.className = 'countdown expired';
+                }
+            }, 1000);
+        }
+
+        // 查询订单状态
+        function checkOrderStatus(showLoading = true) {
+            const statusElement = document.getElementById('paymentStatus');
+            const checkBtn = document.getElementById('checkBtn');
+            
+            if (showLoading) {
+                checkBtn.innerHTML = '<span class="loading"></span> 查询中...';
+                checkBtn.disabled = true;
+            }
+
+            // 构建查询URL（不需要签名，因为是查询自己的订单）
+            const url = `/api?action=order&out_trade_no=${encodeURIComponent(CONFIG.outTradeNo)}&pid=${encodeURIComponent(CONFIG.pid)}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Order status:', data);
+                    
+                    if (data.code === 1) {
+                        // 检查订单状态（0=待支付, 1=已支付）
+                        if (data.status === 1 || (data.data && data.data.status === 1)) {
+                            // 支付成功
+                            statusElement.textContent = '支付成功！';
+                            statusElement.className = 'status success';
+                            clearInterval(countdownInterval);
+                            clearInterval(checkInterval);
+                            
+                            // 播放成功音效（如果需要）
+                            // new Audio('/static/success.mp3').play();
+                            
+                            // 跳转到返回URL
+                            if (CONFIG.returnUrl) {
+                                setTimeout(() => {
+                                    window.location.href = CONFIG.returnUrl;
+                                }, 2000);
+                            }
+                        } else {
+                            // 仍在等待支付
+                            if (!showLoading) {
+                                statusElement.textContent = '等待支付...';
+                                statusElement.className = 'status pending';
+                            }
+                        }
+                    } else {
+                        console.error('Query failed:', data);
+                        if (showLoading) {
+                            statusElement.textContent = '查询失败，请稍后重试';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking order status:', error);
+                    if (showLoading) {
+                        statusElement.textContent = '查询时发生错误';
+                    }
+                })
+                .finally(() => {
+                    if (showLoading) {
+                        checkBtn.innerHTML = '🔍 我已支付，查询订单状态';
+                        checkBtn.disabled = false;
+                    }
+                });
+        }
+
+        // 尝试自动拉起支付宝
+        function tryOpenAlipay() {
+            const paymentUrl = '{{.PaymentURL}}';
+            if (paymentUrl && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                // 移动设备自动尝试打开
+                const link = document.getElementById('openInAlipay');
+                if (link) {
+                    // 延迟1秒后自动点击
+                    setTimeout(() => {
+                        // 可选：询问用户是否打开
+                        if (confirm('检测到您正在使用移动设备，是否立即打开支付宝完成支付？')) {
+                            link.click();
+                        }
+                    }, 1000);
+                }
+            }
+        }
+
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', function() {
+            // 启动倒计时
+            startCountdown(CONFIG.countdownDuration);
+
+            // 定期自动检查订单状态（不显示加载状态）
+            checkInterval = setInterval(() => {
+                checkOrderStatus(false);
+            }, CONFIG.checkInterval);
+            
+            // 立即检查一次
+            setTimeout(() => {
+                checkOrderStatus(false);
+            }, 1000);
+
+            // 尝试自动拉起支付宝（可选）
+            // tryOpenAlipay();
+        });
+
+        // 页面失去焦点时暂停检查，获得焦点时恢复
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // 页面隐藏时暂停定期检查
+                if (checkInterval) {
+                    clearInterval(checkInterval);
+                    checkInterval = null;
+                }
+            } else {
+                // 页面显示时恢复定期检查
+                if (!checkInterval && countdownInterval) {
+                    checkInterval = setInterval(() => {
+                        checkOrderStatus(false);
+                    }, CONFIG.checkInterval);
+                    // 立即检查一次
+                    checkOrderStatus(false);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
