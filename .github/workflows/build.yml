@@ -77,9 +77,9 @@ jobs:
         run: |
           mkdir -p dist
           if [ "$GOOS" = "windows" ]; then
-            go build -v -ldflags="-s -w" -o dist/alimpay-${{ matrix.goos }}-${{ matrix.goarch }}.exe ./cmd/alimpay/
+            go build -v -ldflags="-s -w" -o dist/alimpay-${{ matrix.goos }}-${{ matrix.goarch }}.exe ./cmd/alimpay
           else
-            go build -v -ldflags="-s -w" -o dist/alimpay-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/alimpay/
+            go build -v -ldflags="-s -w" -o dist/alimpay-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/alimpay
           fi
       
       - name: Upload artifacts

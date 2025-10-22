@@ -22,7 +22,7 @@ RUN CGO_ENABLED=1 GOOS=linux go build \
     -tags "sqlite_omit_load_extension" \
     -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME}" \
     -o alimpay \
-    ./cmd/alimpay/
+    ./cmd/alimpay
 
 # 运行阶段
 FROM alpine:latest
