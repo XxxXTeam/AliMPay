@@ -409,11 +409,55 @@ A: 检查以下几点：
 
 欢迎提交 Issue 和 Pull Request！
 
+### 贡献流程
+
 1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
+2. 创建特性分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改（遵循提交规范）
+4. 推送到分支 (`git push origin feature/amazing-feature`)
 5. 开启 Pull Request
+
+### 📝 提交规范
+
+本项目采用 [Conventional Commits](https://www.conventionalcommits.org/) 规范：
+
+```bash
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+**Type 类型**：
+- `feat`: 新功能
+- `fix`: Bug 修复
+- `docs`: 文档更新
+- `style`: 代码格式（不影响逻辑）
+- `refactor`: 重构
+- `perf`: 性能优化
+- `test`: 测试相关
+- `build`: 构建系统或依赖变更
+- `ci`: CI 配置变更
+- `chore`: 其他变更
+
+**示例**：
+```bash
+feat(api): add payment callback endpoint
+fix(database): prevent deadlock in order query
+docs: update README with Docker instructions
+perf(logger): reduce memory allocation
+```
+
+详细规范请参考 [提交指南](docs/COMMIT_GUIDELINES.md)
+
+### 设置提交模板
+
+```bash
+git config commit.template .gitmessage
+```
+
+更多贡献指南请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ---
 
