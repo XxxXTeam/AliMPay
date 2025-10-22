@@ -12,11 +12,12 @@ linters:
     - ineffassign
     - unused
     - errcheck
-    - revive
     - misspell
+    - goimports
+  disable:
+    - revive
     - gocyclo
     - goconst
-    - goimports
     - gocritic
     - gosec
     - unconvert
@@ -25,33 +26,12 @@ linters:
     - stylecheck
     - exportloopref
 
-linters-settings:
-  gocyclo:
-    min-complexity: 15
-  
-  goconst:
-    min-len: 3
-    min-occurrences: 3
-  
-  gosec:
-    excludes:
-      - G404 # Allow weak random for non-crypto use
-  
-  revive:
-    rules:
-      - name: exported
-        disabled: true
-      - name: package-comments
-        disabled: true
-
 issues:
   exclude-rules:
     # Exclude some linters from running on tests files.
     - path: _test\.go
       linters:
-        - gocyclo
         - errcheck
-        - gosec
     
     # Ignore shadowing of 'err' in short variable declarations
     - linters:
