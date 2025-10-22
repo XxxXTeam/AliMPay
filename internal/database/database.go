@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alimpay/alimpay-go/internal/model"
-	"github.com/alimpay/alimpay-go/pkg/logger"
+	"alimpay-go/internal/model"
+	"alimpay-go/pkg/logger"
+
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 )
@@ -29,13 +30,25 @@ var globalDB *DB
 
 // Init 初始化数据库
 func Init(cfg *Config) (*DB, error) {
-	// 打开数据库连接
-	db, err := sql.Open(cfg.Type, cfg.Path)
+	// 打开数据库连接，添加参数以防止死锁
+	// _busy_timeout: 设置忙等待超时（毫秒）
+	// _journal_mode=WAL: 使用WAL模式提高并发性能
+	// _synchronous=NORMAL: 平衡性能与数据安全
+	// _cache_size=-64000: 设置缓存大小（64MB）
+	dsn := cfg.Path + "?_busy_timeout=10000&_journal_mode=WAL&_synchronous=NORMAL&_cache_size=-64000"
+	db, err := sql.Open(cfg.Type, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// 设置连接池参数
+	// 设置连接池参数（SQLite建议单连接写入）
+	// MaxOpenConns设置为1可以避免写入冲突
+	if cfg.MaxOpenConns <= 0 {
+		cfg.MaxOpenConns = 1
+	}
+	if cfg.MaxIdleConns <= 0 {
+		cfg.MaxIdleConns = 1
+	}
 	db.SetMaxIdleConns(cfg.MaxIdleConns)
 	db.SetMaxOpenConns(cfg.MaxOpenConns)
 	db.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifetime) * time.Second)
@@ -47,13 +60,46 @@ func Init(cfg *Config) (*DB, error) {
 
 	globalDB = &DB{db}
 
+	// 优化SQLite设置
+	if err := globalDB.optimizeSQLite(); err != nil {
+		logger.Warn("Failed to optimize SQLite settings", zap.Error(err))
+	}
+
 	// 初始化表结构
 	if err := globalDB.initTables(); err != nil {
 		return nil, fmt.Errorf("failed to initialize tables: %w", err)
 	}
 
-	logger.Info("Database initialized successfully", zap.String("path", cfg.Path))
+	logger.Info("Database initialized successfully",
+		zap.String("path", cfg.Path),
+		zap.Int("max_open_conns", cfg.MaxOpenConns),
+		zap.Int("max_idle_conns", cfg.MaxIdleConns))
 	return globalDB, nil
+}
+
+// optimizeSQLite 优化SQLite设置
+func (db *DB) optimizeSQLite() error {
+	pragmas := []string{
+		"PRAGMA journal_mode=WAL",            // 使用WAL模式
+		"PRAGMA synchronous=NORMAL",          // 平衡性能与安全
+		"PRAGMA cache_size=-64000",           // 64MB缓存
+		"PRAGMA temp_store=MEMORY",           // 临时表存储在内存
+		"PRAGMA mmap_size=268435456",         // 256MB内存映射
+		"PRAGMA page_size=4096",              // 页面大小
+		"PRAGMA auto_vacuum=INCREMENTAL",     // 增量自动清理
+		"PRAGMA busy_timeout=10000",          // 10秒忙等待超时
+		"PRAGMA foreign_keys=ON",             // 启用外键约束
+		"PRAGMA journal_size_limit=67108864", // 64MB日志大小限制
+	}
+
+	for _, pragma := range pragmas {
+		if _, err := db.Exec(pragma); err != nil {
+			logger.Warn("Failed to execute pragma", zap.String("pragma", pragma), zap.Error(err))
+		}
+	}
+
+	logger.Info("SQLite optimizations applied")
+	return nil
 }
 
 // GetDB 获取全局数据库实例

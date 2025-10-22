@@ -1,0 +1,66 @@
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - gofmt
+    - govet
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - unused
+    - errcheck
+    - revive
+    - misspell
+    - gocyclo
+    - goconst
+    - goimports
+    - gocritic
+    - gosec
+    - unconvert
+    - unparam
+    - whitespace
+    - stylecheck
+    - exportloopref
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+  
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  
+  gosec:
+    excludes:
+      - G404 # Allow weak random for non-crypto use
+  
+  revive:
+    rules:
+      - name: exported
+        disabled: true
+      - name: package-comments
+        disabled: true
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - gosec
+    
+    # Ignore shadowing of 'err' in short variable declarations
+    - linters:
+        - govet
+      text: "shadow: declaration of \"err\""
+  
+  # Maximum issues count per one linter
+  max-issues-per-linter: 50
+  
+  # Maximum count of issues with the same text
+  max-same-issues: 10
+

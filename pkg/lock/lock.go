@@ -8,7 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alimpay/alimpay-go/pkg/logger"
+	"alimpay-go/pkg/logger"
+
 	"go.uber.org/zap"
 )
 

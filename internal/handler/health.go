@@ -4,9 +4,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alimpay/alimpay-go/internal/database"
-	"github.com/alimpay/alimpay-go/internal/model"
-	"github.com/alimpay/alimpay-go/internal/service"
+	"alimpay-go/internal/database"
+	"alimpay-go/internal/model"
+	"alimpay-go/internal/service"
+
 	"github.com/gin-gonic/gin"
 )
 

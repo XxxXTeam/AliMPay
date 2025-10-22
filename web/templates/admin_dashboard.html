@@ -3,483 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AliMPay 管理后台 - 实时订单管理系统">
     <title>管理后台 - AliMPay</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .header {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px 30px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-
-        .header h1 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            color: #666;
-            font-size: 14px;
-        }
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .stat-card {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-        }
-
-        .stat-card h3 {
-            color: #666;
-            font-size: 14px;
-            font-weight: normal;
-            margin-bottom: 10px;
-        }
-
-        .stat-card .value {
-            color: #333;
-            font-size: 28px;
-            font-weight: bold;
-        }
-
-        .stat-card.pending .value {
-            color: #ff9800;
-        }
-
-        .stat-card.paid .value {
-            color: #4caf50;
-        }
-
-        .stat-card.total .value {
-            color: #2196f3;
-        }
-
-        .content {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-
-        .search-bar {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-        }
-
-        .search-bar input {
-            flex: 1;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        .search-bar button {
-            padding: 10px 20px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .search-bar button:hover {
-            background: #5568d3;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        thead {
-            background: #f5f5f5;
-        }
-
-        th {
-            padding: 12px;
-            text-align: left;
-            font-weight: 600;
-            color: #666;
-            font-size: 14px;
-            border-bottom: 2px solid #e0e0e0;
-        }
-
-        td {
-            padding: 12px;
-            border-bottom: 1px solid #f0f0f0;
-            font-size: 14px;
-        }
-
-        tr:hover {
-            background: #f9f9f9;
-        }
-
-        .status {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .status.pending {
-            background: #fff3e0;
-            color: #f57c00;
-        }
-
-        .status.paid {
-            background: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .status.closed {
-            background: #ffebee;
-            color: #c62828;
-        }
-
-        .actions {
-            display: flex;
-            gap: 5px;
-        }
-
-        .btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s;
-        }
-
-        .btn-success {
-            background: #4caf50;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #45a049;
-        }
-
-        .btn-danger {
-            background: #f44336;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #da190b;
-        }
-
-        .btn-info {
-            background: #2196f3;
-            color: white;
-        }
-
-        .btn-info:hover {
-            background: #0b7dda;
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .alert {
-            padding: 12px 20px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .alert.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .alert.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .refresh-btn {
-            float: right;
-            padding: 8px 16px;
-            background: #4caf50;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .refresh-btn:hover {
-            background: #45a049;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #999;
-        }
-
-        .empty-state svg {
-            width: 80px;
-            height: 80px;
-            margin-bottom: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/css/admin.css">
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <div class="header">
-            <h1>📊 订单管理后台</h1>
-            <p>实时查看和管理所有订单</p>
+            <h1>
+                <span>📊</span>
+                <span>订单管理后台</span>
+            </h1>
+            <p>实时查看和管理所有订单 · AliMPay Golang Edition</p>
         </div>
 
+        <!-- Statistics Cards -->
         <div class="stats">
             <div class="stat-card pending">
                 <h3>待支付订单</h3>
                 <div class="value" id="pendingCount">0</div>
+                <div class="trend">实时更新中...</div>
             </div>
             <div class="stat-card paid">
                 <h3>已支付订单</h3>
                 <div class="value" id="paidCount">0</div>
+                <div class="trend">今日统计</div>
             </div>
             <div class="stat-card total">
                 <h3>今日订单</h3>
                 <div class="value" id="totalCount">0</div>
+                <div class="trend">24小时内</div>
             </div>
         </div>
 
+        <!-- Content Section -->
         <div class="content">
+            <!-- Alert Message -->
             <div class="alert" id="alert"></div>
 
+            <!-- Search Bar -->
             <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="搜索订单号...">
-                <button onclick="searchOrder()">🔍 搜索</button>
-                <button class="refresh-btn" onclick="loadOrders()">🔄 刷新</button>
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="🔍 搜索订单号、商户订单号或商品名称..."
+                    autocomplete="off"
+                >
+                <button class="btn btn-primary" onclick="window.adminActions.searchOrder()">
+                    搜索
+                </button>
+                <button class="btn btn-primary refresh-btn" onclick="window.adminActions.loadOrders()">
+                    🔄 刷新
+                </button>
             </div>
 
-            <table id="ordersTable">
-                <thead>
-                    <tr>
-                        <th>订单号</th>
-                        <th>商户订单号</th>
-                        <th>商品名称</th>
-                        <th>金额</th>
-                        <th>实付金额</th>
-                        <th>状态</th>
-                        <th>创建时间</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="ordersBody">
-                    <tr>
-                        <td colspan="8" class="empty-state">
-                            <div>加载中...</div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            <!-- Table -->
+            <div class="table-wrapper">
+                <table id="ordersTable">
+                    <thead>
+                        <tr>
+                            <th>订单号</th>
+                            <th>商户订单号</th>
+                            <th>商品名称</th>
+                            <th>金额</th>
+                            <th>实付金额</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersBody">
+                        <tr>
+                            <td colspan="8" class="empty-state">
+                                <div class="loading"></div>
+                                <p style="margin-top: 16px;">加载中...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 24px; color: rgba(255,255,255,0.8); font-size: 14px;">
+            <p>AliMPay Golang Edition v1.0.0</p>
+            <p style="margin-top: 8px;">Powered by Go + Gin + SQLite</p>
         </div>
     </div>
 
-    <script>
-        const PID = '1001003549245339'; // 商户ID
-
-        // 加载订单列表
-        async function loadOrders() {
-            try {
-                const response = await fetch('/admin/orders');
-                const data = await response.json();
-                
-                if (data.code === 1) {
-                    renderOrders(data.orders || []);
-                    updateStats(data.orders || []);
-                } else {
-                    showAlert('加载失败：' + data.msg, 'error');
-                }
-            } catch (error) {
-                showAlert('网络错误：' + error.message, 'error');
-            }
-        }
-
-        // 渲染订单列表
-        function renderOrders(orders) {
-            const tbody = document.getElementById('ordersBody');
-            
-            if (orders.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="empty-state"><div>暂无订单数据</div></td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = orders.map(order => `
-                <tr>
-                    <td><code>${order.trade_no}</code></td>
-                    <td><code>${order.out_trade_no}</code></td>
-                    <td>${order.name}</td>
-                    <td>¥${order.price}</td>
-                    <td>¥${order.payment_amount || order.price}</td>
-                    <td>${renderStatus(order.status)}</td>
-                    <td>${formatTime(order.add_time)}</td>
-                    <td>
-                        <div class="actions">
-                            ${order.status === 0 ? `
-                                <button class="btn btn-success" onclick="markPaid('${order.out_trade_no}')">✓ 已支付</button>
-                                <button class="btn btn-danger" onclick="cancelOrder('${order.out_trade_no}')">✗ 取消</button>
-                            ` : `
-                                <button class="btn btn-info" onclick="viewDetails('${order.trade_no}')">📄 详情</button>
-                            `}
-                        </div>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        // 渲染状态
-        function renderStatus(status) {
-            const statusMap = {
-                0: '<span class="status pending">待支付</span>',
-                1: '<span class="status paid">已支付</span>',
-                2: '<span class="status closed">已关闭</span>'
-            };
-            return statusMap[status] || '<span class="status">未知</span>';
-        }
-
-        // 格式化时间
-        function formatTime(timeStr) {
-            const date = new Date(timeStr);
-            return date.toLocaleString('zh-CN', { 
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-
-        // 更新统计
-        function updateStats(orders) {
-            const pending = orders.filter(o => o.status === 0).length;
-            const paid = orders.filter(o => o.status === 1).length;
-            const today = orders.filter(o => {
-                const orderDate = new Date(o.add_time).toDateString();
-                return orderDate === new Date().toDateString();
-            }).length;
-
-            document.getElementById('pendingCount').textContent = pending;
-            document.getElementById('paidCount').textContent = paid;
-            document.getElementById('totalCount').textContent = today;
-        }
-
-        // 标记已支付
-        async function markPaid(outTradeNo) {
-            if (!confirm('确认标记此订单为已支付？')) return;
-
-            try {
-                const response = await fetch(`/admin?action=mark_paid&pid=${PID}&out_trade_no=${outTradeNo}`, {
-                    method: 'POST'
-                });
-                const data = await response.json();
-                
-                if (data.code === 1) {
-                    showAlert('订单已标记为已支付', 'success');
-                    setTimeout(() => loadOrders(), 1000);
-                } else {
-                    showAlert('操作失败：' + data.msg, 'error');
-                }
-            } catch (error) {
-                showAlert('网络错误：' + error.message, 'error');
-            }
-        }
-
-        // 取消订单
-        async function cancelOrder(outTradeNo) {
-            if (!confirm('确认取消此订单？')) return;
-
-            try {
-                const response = await fetch(`/admin?action=cancel&pid=${PID}&out_trade_no=${outTradeNo}`, {
-                    method: 'POST'
-                });
-                const data = await response.json();
-                
-                if (data.code === 1) {
-                    showAlert('订单已取消', 'success');
-                    setTimeout(() => loadOrders(), 1000);
-                } else {
-                    showAlert('操作失败：' + data.msg, 'error');
-                }
-            } catch (error) {
-                showAlert('网络错误：' + error.message, 'error');
-            }
-        }
-
-        // 查看详情
-        function viewDetails(tradeNo) {
-            alert(`订单详情\n订单号：${tradeNo}\n\n更多功能开发中...`);
-        }
-
-        // 搜索订单
-        function searchOrder() {
-            const keyword = document.getElementById('searchInput').value.trim();
-            if (!keyword) {
-                loadOrders();
-                return;
-            }
-
-            // TODO: 实现搜索功能
-            showAlert('搜索功能开发中...', 'error');
-        }
-
-        // 显示提示
-        function showAlert(message, type) {
-            const alert = document.getElementById('alert');
-            alert.className = `alert ${type}`;
-            alert.textContent = message;
-            alert.style.display = 'block';
-            
-            setTimeout(() => {
-                alert.style.display = 'none';
-            }, 3000);
-        }
-
-        // 页面加载时获取订单
-        loadOrders();
-        
-        // 每30秒自动刷新
-        setInterval(loadOrders, 30000);
-    </script>
+    <script src="/static/js/admin.js"></script>
 </body>
 </html>
 

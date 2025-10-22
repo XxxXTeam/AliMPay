@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Build artifacts
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+alimpay
+
+# Test and coverage
+*.test
+*.out
+coverage.*
+
+# Data and logs
+data/
+logs/
+*.db
+
+# Temp files
+tmp/
+temp/
+
+# Documentation
+*.md
+docs/
+
+# CI/CD
+.github/
+
+# Docker
+docker-compose.yml
+Dockerfile
+.dockerignore
+

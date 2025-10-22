@@ -4,10 +4,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/alimpay/alimpay-go/internal/service"
-	"github.com/alimpay/alimpay-go/internal/validator"
-	"github.com/alimpay/alimpay-go/pkg/logger"
-	"github.com/alimpay/alimpay-go/pkg/utils"
+	"alimpay-go/internal/config"
+	"alimpay-go/internal/service"
+	"alimpay-go/internal/validator"
+	"alimpay-go/pkg/logger"
+	"alimpay-go/pkg/utils"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -16,13 +18,15 @@ import (
 type APIHandler struct {
 	codepay *service.CodePayService
 	monitor *service.MonitorService
+	cfg     *config.Config
 }
 
 // NewAPIHandler 创建API处理器
-func NewAPIHandler(codepay *service.CodePayService, monitor *service.MonitorService) *APIHandler {
+func NewAPIHandler(codepay *service.CodePayService, monitor *service.MonitorService, cfg *config.Config) *APIHandler {
 	return &APIHandler{
 		codepay: codepay,
 		monitor: monitor,
+		cfg:     cfg,
 	}
 }
 
@@ -210,7 +214,10 @@ func (h *APIHandler) handleCreatePayment(c *gin.Context) {
 		return
 	}
 
-	result, err := h.codepay.CreatePayment(params)
+	// 获取基础URL
+	baseURL := utils.GetBaseURL(c, h.cfg.Server.BaseURL)
+
+	result, err := h.codepay.CreatePayment(params, baseURL)
 	if err != nil {
 		logger.Error("Failed to create payment", zap.Error(err))
 		c.JSON(http.StatusBadRequest, gin.H{

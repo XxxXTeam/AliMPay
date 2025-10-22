@@ -1,43 +1,90 @@
-# Binaries
+# Binaries for programs and plugins
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
 alimpay
+alimpay-*
 
 # Test binary, built with `go test -c`
 *.test
 
 # Output of the go coverage tool
 *.out
+coverage.*
+*.coverprofile
+
+# Go workspace file
+go.work
+go.work.sum
 
 # Dependency directories
 vendor/
 
-# Go workspace file
-go.work
-
-# Config files with sensitive data
-configs/alipay.yaml
-configs/config.yaml
-
-# Data directories
-data/
-logs/
-qrcodes/
-*.py
-*.sh
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+.DS_Store
+
+# Build directories
+dist/
+build/
+bin/
+
+# Data directories
+data/
+!data/.gitkeep
+
+# Logs
+logs/
 *.log
-config.yaml
+!logs/.gitkeep
+
+# QR codes
+qrcode/*.jpg
+qrcode/*.png
+!qrcode/README.md
+
+# Configuration
+configs/config.yaml
+!configs/config.example.yaml
+
+# Temporary files
+tmp/
+temp/
+*.tmp
 
 # OS
 .DS_Store
 Thumbs.db
 
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test artifacts
+/tmp/*
+*.bak
+*.backup
+
+# Release archives
+*.tar.gz
+*.zip
+
+# Lock files
+*.lock
+!go.sum
+
+# Cache
+.cache/

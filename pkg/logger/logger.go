@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -26,29 +28,80 @@ type Config struct {
 	Compress   bool
 }
 
+// 颜色定义
+const (
+	colorReset  = "\033[0m"
+	colorRed    = "\033[31m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+	colorBlue   = "\033[34m"
+	colorPurple = "\033[35m"
+	colorCyan   = "\033[36m"
+	colorGray   = "\033[37m"
+	colorWhite  = "\033[97m"
+
+	// 粗体颜色
+	colorBoldRed    = "\033[1;31m"
+	colorBoldGreen  = "\033[1;32m"
+	colorBoldYellow = "\033[1;33m"
+	colorBoldBlue   = "\033[1;34m"
+	colorBoldPurple = "\033[1;35m"
+	colorBoldCyan   = "\033[1;36m"
+)
+
+// customColorLevelEncoder 自定义彩色日志级别编码器
+func customColorLevelEncoder(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
+	switch level {
+	case zapcore.DebugLevel:
+		enc.AppendString(colorBoldBlue + "DEBUG" + colorReset)
+	case zapcore.InfoLevel:
+		enc.AppendString(colorBoldGreen + "INFO " + colorReset)
+	case zapcore.WarnLevel:
+		enc.AppendString(colorBoldYellow + "WARN " + colorReset)
+	case zapcore.ErrorLevel:
+		enc.AppendString(colorBoldRed + "ERROR" + colorReset)
+	case zapcore.FatalLevel:
+		enc.AppendString(colorBoldPurple + "FATAL" + colorReset)
+	default:
+		enc.AppendString(level.CapitalString())
+	}
+}
+
+// customTimeEncoder 自定义时间编码器
+func customTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+	enc.AppendString(colorCyan + t.Format("2006-01-02 15:04:05.000") + colorReset)
+}
+
+// customCallerEncoder 自定义调用者编码器
+func customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+	enc.AppendString(colorGray + caller.TrimmedPath() + colorReset)
+}
+
 // Init 初始化日志系统
 func Init(cfg *Config) error {
 	// 设置日志级别
 	level := zapcore.InfoLevel
-	switch cfg.Level {
+	switch strings.ToLower(cfg.Level) {
 	case "debug":
 		level = zapcore.DebugLevel
 	case "info":
 		level = zapcore.InfoLevel
-	case "warn":
+	case "warn", "warning":
 		level = zapcore.WarnLevel
 	case "error":
 		level = zapcore.ErrorLevel
+	case "fatal":
+		level = zapcore.FatalLevel
 	}
 
-	// 设置编码器配置
-	encoderConfig := zapcore.EncoderConfig{
-		TimeKey:        "timestamp",
+	// 文件输出的编码器配置（JSON格式）
+	fileEncoderConfig := zapcore.EncoderConfig{
+		TimeKey:        "time",
 		LevelKey:       "level",
 		NameKey:        "logger",
 		CallerKey:      "caller",
 		FunctionKey:    zapcore.OmitKey,
-		MessageKey:     "message",
+		MessageKey:     "msg",
 		StacktraceKey:  "stacktrace",
 		LineEnding:     zapcore.DefaultLineEnding,
 		EncodeLevel:    zapcore.LowercaseLevelEncoder,
@@ -57,13 +110,21 @@ func Init(cfg *Config) error {
 		EncodeCaller:   zapcore.ShortCallerEncoder,
 	}
 
-	// 选择编码器
-	var encoder zapcore.Encoder
-	if cfg.Format == "json" {
-		encoder = zapcore.NewJSONEncoder(encoderConfig)
-	} else {
-		encoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-		encoder = zapcore.NewConsoleEncoder(encoderConfig)
+	// 控制台输出的编码器配置（彩色格式）
+	consoleEncoderConfig := zapcore.EncoderConfig{
+		TimeKey:          "T",
+		LevelKey:         "L",
+		NameKey:          "N",
+		CallerKey:        "C",
+		FunctionKey:      zapcore.OmitKey,
+		MessageKey:       "M",
+		StacktraceKey:    "S",
+		LineEnding:       zapcore.DefaultLineEnding,
+		EncodeLevel:      customColorLevelEncoder,
+		EncodeTime:       customTimeEncoder,
+		EncodeDuration:   zapcore.StringDurationEncoder,
+		EncodeCaller:     customCallerEncoder,
+		ConsoleSeparator: " ",
 	}
 
 	// 设置输出
@@ -83,21 +144,24 @@ func Init(cfg *Config) error {
 			return fmt.Errorf("failed to open log file: %w", err)
 		}
 
+		// 文件使用JSON格式，便于解析
+		fileEncoder := zapcore.NewJSONEncoder(fileEncoderConfig)
 		fileWriter := zapcore.AddSync(logFile)
-		fileCore := zapcore.NewCore(encoder, fileWriter, level)
+		fileCore := zapcore.NewCore(fileEncoder, fileWriter, level)
 		cores = append(cores, fileCore)
 	}
 
 	// 控制台输出
 	if cfg.Output == "stdout" || cfg.Output == "both" {
-		consoleEncoder := zapcore.NewConsoleEncoder(encoderConfig)
+		// 控制台使用彩色格式，便于查看
+		consoleEncoder := zapcore.NewConsoleEncoder(consoleEncoderConfig)
 		consoleCore := zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), level)
 		cores = append(cores, consoleCore)
 	}
 
 	// 创建logger
 	core := zapcore.NewTee(cores...)
-	globalLogger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
+	globalLogger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1), zap.AddStacktrace(zapcore.ErrorLevel))
 	sugarLogger = globalLogger.Sugar()
 
 	return nil
@@ -177,4 +241,47 @@ func Sync() error {
 		return globalLogger.Sync()
 	}
 	return nil
+}
+
+// WithColor 为文本添加颜色
+func WithColor(color, text string) string {
+	return color + text + colorReset
+}
+
+// Success 记录成功信息（绿色）
+func Success(msg string, fields ...zap.Field) {
+	GetLogger().Info(WithColor(colorGreen, "✓ "+msg), fields...)
+}
+
+// Progress 记录进度信息（蓝色）
+func Progress(msg string, fields ...zap.Field) {
+	GetLogger().Info(WithColor(colorBlue, "➜ "+msg), fields...)
+}
+
+// Highlight 记录高亮信息（黄色）
+func Highlight(msg string, fields ...zap.Field) {
+	GetLogger().Info(WithColor(colorYellow, "★ "+msg), fields...)
+}
+
+// JSON 格式化输出JSON对象（用于调试）
+func JSON(msg string, data interface{}) {
+	GetLogger().Debug(msg, zap.Any("data", data))
+}
+
+// Request 记录HTTP请求日志（精简版）
+func Request(method, path, ip string, statusCode int, duration float64) {
+	statusColor := colorGreen
+	if statusCode >= 400 && statusCode < 500 {
+		statusColor = colorYellow
+	} else if statusCode >= 500 {
+		statusColor = colorRed
+	}
+
+	GetLogger().Info("",
+		zap.String("method", WithColor(colorBlue, method)),
+		zap.String("path", path),
+		zap.String("ip", colorGray+ip+colorReset),
+		zap.String("status", WithColor(statusColor, fmt.Sprintf("%d", statusCode))),
+		zap.Float64("ms", duration),
+	)
 }

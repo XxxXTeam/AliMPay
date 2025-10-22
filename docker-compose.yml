@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  alimpay:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        BUILD_TIME: ${BUILD_TIME}
+    image: alimpay:${VERSION:-dev}
+    container_name: alimpay
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./configs/config.yaml:/app/configs/config.yaml:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./qrcode:/app/qrcode
+    environment:
+      - TZ=Asia/Shanghai
+      - GIN_MODE=release
+    networks:
+      - alimpay-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Redis缓存（可选）
+  redis:
+    image: redis:7-alpine
+    container_name: alimpay-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - alimpay-network
+    command: redis-server --appendonly yes
+    profiles:
+      - with-redis
+
+networks:
+  alimpay-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+

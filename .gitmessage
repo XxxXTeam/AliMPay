@@ -1,0 +1,52 @@
+# <type>(<scope>): <subject>
+# |<----  Using a Maximum Of 50 Characters  ---->|
+
+# Explain why this change is being made
+# |<----   Try To Limit Each Line to a Maximum Of 72 Characters   ---->|
+
+# Provide links or keys to any relevant tickets, articles or other resources
+# Example: Github issue #23
+
+# --- COMMIT END ---
+# Type can be
+#    feat     (new feature)
+#    fix      (bug fix)
+#    refactor (refactoring production code)
+#    style    (formatting, missing semi colons, etc; no code change)
+#    docs     (changes to documentation)
+#    test     (adding or refactoring tests; no production code change)
+#    chore    (updating grunt tasks etc; no production code change)
+#    perf     (performance improvements)
+#    build    (changes to build system or dependencies)
+#    ci       (changes to CI configuration files and scripts)
+#    revert   (revert a previous commit)
+# --------------------
+# Scope is optional and can be anything specifying place of the commit change
+#    Examples: database, handler, service, api, docker, etc.
+# --------------------
+# Subject line should:
+#    * use imperative, present tense: "change" not "changed" nor "changes"
+#    * don't capitalize first letter
+#    * no dot (.) at the end
+# --------------------
+# Body should:
+#    * explain what and why vs. how
+#    * include motivation for the change
+#    * wrap at 72 characters
+# --------------------
+# Footer should:
+#    * reference issues by number (e.g., "Fixes #123" or "Closes #456")
+#    * note breaking changes (e.g., "BREAKING CHANGE: ...")
+# --------------------
+# Examples:
+#
+# feat(api): add payment callback endpoint
+#
+# fix(database): prevent deadlock in order query
+#
+# docs: update README with Docker instructions
+#
+# perf(logger): reduce memory allocation in log formatting
+#
+# BREAKING CHANGE: remove deprecated /api/v1/pay endpoint
+

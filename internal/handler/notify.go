@@ -3,8 +3,9 @@ package handler
 import (
 	"net/http"
 
-	"github.com/alimpay/alimpay-go/internal/service"
-	"github.com/alimpay/alimpay-go/pkg/logger"
+	"alimpay-go/internal/service"
+	"alimpay-go/pkg/logger"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )

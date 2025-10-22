@@ -3,8 +3,11 @@ package handler
 import (
 	"net/http"
 
-	"github.com/alimpay/alimpay-go/internal/service"
-	"github.com/alimpay/alimpay-go/pkg/logger"
+	"alimpay-go/internal/config"
+	"alimpay-go/internal/service"
+	"alimpay-go/pkg/logger"
+	"alimpay-go/pkg/utils"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -12,12 +15,14 @@ import (
 // SubmitHandler 支付页面处理器
 type SubmitHandler struct {
 	codepay *service.CodePayService
+	cfg     *config.Config
 }
 
 // NewSubmitHandler 创建支付页面处理器
-func NewSubmitHandler(codepay *service.CodePayService) *SubmitHandler {
+func NewSubmitHandler(codepay *service.CodePayService, cfg *config.Config) *SubmitHandler {
 	return &SubmitHandler{
 		codepay: codepay,
+		cfg:     cfg,
 	}
 }
 
@@ -39,8 +44,11 @@ func (h *SubmitHandler) HandleSubmit(c *gin.Context) {
 		params["sign_type"] = "MD5"
 	}
 
+	// 获取基础URL
+	baseURL := utils.GetBaseURL(c, h.cfg.Server.BaseURL)
+
 	// 创建支付
-	result, err := h.codepay.CreatePayment(params)
+	result, err := h.codepay.CreatePayment(params, baseURL)
 	if err != nil {
 		logger.Error("Failed to create payment", zap.Error(err))
 		h.renderError(c, err.Error())
@@ -77,8 +85,8 @@ func (h *SubmitHandler) renderPaymentPage(c *gin.Context, result map[string]inte
 		"PaymentTips":    getSlice(result, "payment_tips"),
 	}
 
-	// 渲染模板（使用新版美化模板）
-	c.HTML(http.StatusOK, "submit_v2.html", templateData)
+	// 渲染模板
+	c.HTML(http.StatusOK, "submit.html", templateData)
 }
 
 // 辅助函数：安全获取字符串
@@ -130,7 +138,7 @@ func getSlice(m map[string]interface{}, key string) []string {
 
 // renderError 渲染错误页面
 func (h *SubmitHandler) renderError(c *gin.Context, errorMsg string) {
-	c.HTML(http.StatusOK, "error_v2.html", gin.H{
+	c.HTML(http.StatusOK, "error.html", gin.H{
 		"error": errorMsg,
 	})
 }

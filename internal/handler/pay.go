@@ -3,13 +3,15 @@ package handler
 import (
 	"encoding/base64"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"strconv"
 
-	"github.com/alimpay/alimpay-go/internal/config"
-	"github.com/alimpay/alimpay-go/internal/database"
-	"github.com/alimpay/alimpay-go/pkg/logger"
+	"alimpay-go/internal/config"
+	"alimpay-go/internal/database"
+	"alimpay-go/pkg/logger"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -33,8 +35,15 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 	tradeNo := c.Query("trade_no")
 	amountStr := c.Query("amount")
 
+	logger.Info("HandlePayPage called",
+		zap.String("trade_no", tradeNo),
+		zap.String("amount_str", amountStr))
+
 	if tradeNo == "" || amountStr == "" {
-		c.HTML(http.StatusOK, "error_v2.html", gin.H{
+		logger.Warn("Missing parameters",
+			zap.String("trade_no", tradeNo),
+			zap.String("amount", amountStr))
+		c.HTML(http.StatusOK, "error.html", gin.H{
 			"title":   "参数错误",
 			"message": "缺少必要参数",
 		})
@@ -44,7 +53,7 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 	// 解析金额
 	amount, err := strconv.ParseFloat(amountStr, 64)
 	if err != nil {
-		c.HTML(http.StatusOK, "error_v2.html", gin.H{
+		c.HTML(http.StatusOK, "error.html", gin.H{
 			"title":   "参数错误",
 			"message": "金额格式错误",
 		})
@@ -52,18 +61,38 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 	}
 
 	// 查询订单
+	logger.Info("Querying order", zap.String("trade_no", tradeNo))
 	order, err := h.db.GetOrderByID(tradeNo)
-	if err != nil || order == nil {
-		c.HTML(http.StatusOK, "error_v2.html", gin.H{
+	if err != nil {
+		logger.Error("Failed to query order",
+			zap.String("trade_no", tradeNo),
+			zap.Error(err))
+		c.HTML(http.StatusOK, "error.html", gin.H{
 			"title":   "订单不存在",
 			"message": "订单未找到或已失效",
 		})
 		return
 	}
 
+	if order == nil {
+		logger.Warn("Order is nil", zap.String("trade_no", tradeNo))
+		c.HTML(http.StatusOK, "error.html", gin.H{
+			"title":   "订单不存在",
+			"message": "订单未找到或已失效",
+		})
+		return
+	}
+
+	logger.Info("Order found",
+		zap.String("trade_no", tradeNo),
+		zap.String("out_trade_no", order.OutTradeNo),
+		zap.Int("status", order.Status),
+		zap.Float64("payment_amount", order.PaymentAmount))
+
 	// 检查订单状态
 	if order.Status == 1 {
-		c.HTML(http.StatusOK, "error_v2.html", gin.H{
+		logger.Warn("Order already paid", zap.String("trade_no", tradeNo))
+		c.HTML(http.StatusOK, "error.html", gin.H{
 			"title":   "订单已支付",
 			"message": "该订单已完成支付",
 		})
@@ -76,15 +105,23 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 
 	// 读取经营码图片
 	qrCodePath := h.cfg.Payment.BusinessQRMode.QRCodePath
+	logger.Info("Reading QR code file", zap.String("path", qrCodePath))
+
 	qrCodeData, err := os.ReadFile(qrCodePath)
 	if err != nil {
-		logger.Error("Failed to read QR code", zap.Error(err))
-		c.HTML(http.StatusOK, "error_v2.html", gin.H{
+		logger.Error("Failed to read QR code",
+			zap.String("path", qrCodePath),
+			zap.Error(err))
+		c.HTML(http.StatusOK, "error.html", gin.H{
 			"title":   "系统错误",
 			"message": "无法加载收款码",
 		})
 		return
 	}
+
+	logger.Info("QR code file read successfully",
+		zap.String("path", qrCodePath),
+		zap.Int("size", len(qrCodeData)))
 
 	// 检测文件类型
 	contentType := "image/png"
@@ -93,6 +130,14 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 			contentType = "image/jpeg"
 		}
 	}
+
+	// 生成 Data URI（需要使用 template.URL 类型避免被转义）
+	dataURI := template.URL(fmt.Sprintf("data:%s;base64,%s", contentType,
+		encodeBase64(qrCodeData)))
+
+	logger.Info("Rendering payment page",
+		zap.String("trade_no", tradeNo),
+		zap.Int("qr_code_size", len(qrCodeData)))
 
 	// 渲染支付页面
 	c.HTML(http.StatusOK, "pay.html", gin.H{
@@ -105,8 +150,7 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 			"create_time":    order.AddTime.Format("2006-01-02 15:04:05"),
 			"pid":            order.PID,
 		},
-		"qr_code_data": fmt.Sprintf("data:%s;base64,%s", contentType,
-			encodeBase64(qrCodeData)),
+		"qr_code_data": dataURI,
 		"instructions": gin.H{
 			"step1": "打开支付宝，点击「扫一扫」",
 			"step2": fmt.Sprintf("扫描下方二维码，输入金额 %.2f 元", amount),

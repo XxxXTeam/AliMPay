@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alimpay/alimpay-go/internal/config"
-	"github.com/alimpay/alimpay-go/internal/database"
-	"github.com/alimpay/alimpay-go/pkg/logger"
+	"alimpay-go/internal/config"
+	"alimpay-go/internal/database"
+	"alimpay-go/pkg/logger"
 )
 
 func main() {

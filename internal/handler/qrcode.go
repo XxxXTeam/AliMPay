@@ -8,8 +8,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/alimpay/alimpay-go/internal/config"
-	"github.com/alimpay/alimpay-go/pkg/logger"
+	"alimpay-go/internal/config"
+	"alimpay-go/pkg/logger"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )

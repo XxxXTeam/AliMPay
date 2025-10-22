@@ -5,9 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/alimpay/alimpay-go/internal/database"
-	"github.com/alimpay/alimpay-go/internal/model"
-	"github.com/alimpay/alimpay-go/pkg/logger"
+	"alimpay-go/internal/database"
+	"alimpay-go/internal/model"
+	"alimpay-go/pkg/logger"
+
 	"go.uber.org/zap"
 )
 

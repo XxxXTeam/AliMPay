@@ -8,13 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alimpay/alimpay-go/internal/config"
-	"github.com/alimpay/alimpay-go/internal/database"
-	"github.com/alimpay/alimpay-go/internal/model"
-	"github.com/alimpay/alimpay-go/pkg/lock"
-	"github.com/alimpay/alimpay-go/pkg/logger"
-	"github.com/alimpay/alimpay-go/pkg/qrcode"
-	"github.com/alimpay/alimpay-go/pkg/utils"
+	"alimpay-go/internal/config"
+	"alimpay-go/internal/database"
+	"alimpay-go/internal/model"
+	"alimpay-go/pkg/lock"
+	"alimpay-go/pkg/logger"
+	"alimpay-go/pkg/qrcode"
+	"alimpay-go/pkg/utils"
+
 	"go.uber.org/zap"
 )
 
@@ -94,7 +95,7 @@ func (s *CodePayService) GetMerchantInfo() map[string]interface{} {
 }
 
 // CreatePayment 创建支付订单
-func (s *CodePayService) CreatePayment(params map[string]string) (map[string]interface{}, error) {
+func (s *CodePayService) CreatePayment(params map[string]string, baseURL string) (map[string]interface{}, error) {
 	// 验证参数
 	if err := s.validatePaymentParams(params); err != nil {
 		return nil, err
@@ -116,7 +117,7 @@ func (s *CodePayService) CreatePayment(params map[string]string) (map[string]int
 		logger.Info("Order already exists, returning existing order",
 			zap.String("out_trade_no", params["out_trade_no"]),
 			zap.String("trade_no", existingOrder.ID))
-		return s.buildOrderResponse(existingOrder), nil
+		return s.buildOrderResponse(existingOrder, baseURL), nil
 	}
 
 	// 解析金额（严格防止0元购）
@@ -210,8 +211,6 @@ func (s *CodePayService) CreatePayment(params map[string]string) (map[string]int
 	// 根据收款模式生成二维码
 	if s.cfg.Payment.BusinessQRMode.Enabled {
 		// 经营码模式：生成包含金额信息的支付链接
-		baseURL := s.getBaseURL()
-
 		// 生成支付页面链接（包含金额信息）
 		paymentPageURL := fmt.Sprintf("%s/pay?trade_no=%s&amount=%.2f",
 			baseURL, tradeNo, paymentAmount)
@@ -257,7 +256,7 @@ func (s *CodePayService) CreatePayment(params map[string]string) (map[string]int
 }
 
 // buildOrderResponse 构建订单响应（用于已存在的订单）
-func (s *CodePayService) buildOrderResponse(order *model.Order) map[string]interface{} {
+func (s *CodePayService) buildOrderResponse(order *model.Order, baseURL string) map[string]interface{} {
 	response := map[string]interface{}{
 		"code":           1,
 		"msg":            "SUCCESS",
@@ -273,7 +272,6 @@ func (s *CodePayService) buildOrderResponse(order *model.Order) map[string]inter
 	if s.cfg.Payment.BusinessQRMode.Enabled {
 		// 经营码模式
 		token := utils.MD5(fmt.Sprintf("qrcode_access_%s", time.Now().Format("2006-01-02")))
-		baseURL := s.getBaseURL()
 		qrCodeURL := fmt.Sprintf("%s/qrcode?type=business&token=%s", baseURL, token)
 
 		response["payment_url"] = "" // 经营码模式没有直接URL
@@ -442,13 +440,6 @@ func (s *CodePayService) formatPayTime(payTime *time.Time) string {
 		return ""
 	}
 	return utils.FormatTime(*payTime)
-}
-
-// getBaseURL 获取基础URL
-func (s *CodePayService) getBaseURL() string {
-	// 在实际环境中，这应该从请求中获取
-	// 这里简化处理，返回配置的服务器地址
-	return fmt.Sprintf("http://localhost:%d", s.cfg.Server.Port)
 }
 
 // GetMerchantID 获取商户ID

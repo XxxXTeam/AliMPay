@@ -1,8 +1,9 @@
 package service
 
 import (
-	"github.com/alimpay/alimpay-go/pkg/logger"
-	"github.com/alimpay/alimpay-go/pkg/utils"
+	"alimpay-go/pkg/logger"
+	"alimpay-go/pkg/utils"
+
 	"go.uber.org/zap"
 )
 

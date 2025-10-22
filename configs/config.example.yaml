@@ -7,6 +7,7 @@ server:
   mode: "release"  # debug, release, test
   read_timeout: 60
   write_timeout: 60
+  base_url: ""  # 留空则自动从请求获取，或手动指定如: https://your-domain.com
 
 alipay:
   # 支付宝网关地址
@@ -102,8 +103,8 @@ monitor:
   # 监控服务启用
   enabled: true
   
-  # 监控间隔（秒）
-  interval: 30
+  # 监控间隔（秒）- 订单监听频率
+  interval: 5
   
   # 监控锁超时（秒）
   lock_timeout: 300

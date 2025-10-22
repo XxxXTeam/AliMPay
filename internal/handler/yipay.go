@@ -4,11 +4,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/alimpay/alimpay-go/internal/database"
-	"github.com/alimpay/alimpay-go/internal/model"
-	"github.com/alimpay/alimpay-go/internal/service"
-	"github.com/alimpay/alimpay-go/pkg/logger"
-	"github.com/alimpay/alimpay-go/pkg/utils"
+	"alimpay-go/internal/config"
+	"alimpay-go/internal/database"
+	"alimpay-go/internal/model"
+	"alimpay-go/internal/service"
+	"alimpay-go/pkg/logger"
+	"alimpay-go/pkg/utils"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -17,13 +19,15 @@ import (
 type YiPayHandler struct {
 	db      *database.DB
 	codepay *service.CodePayService
+	cfg     *config.Config
 }
 
 // NewYiPayHandler 创建易支付处理器
-func NewYiPayHandler(db *database.DB, codepay *service.CodePayService) *YiPayHandler {
+func NewYiPayHandler(db *database.DB, codepay *service.CodePayService, cfg *config.Config) *YiPayHandler {
 	return &YiPayHandler{
 		db:      db,
 		codepay: codepay,
+		cfg:     cfg,
 	}
 }
 
@@ -221,8 +225,11 @@ func (h *YiPayHandler) HandleSubmitAPI(c *gin.Context) {
 		return
 	}
 
+	// 获取基础URL
+	baseURL := utils.GetBaseURL(c, h.cfg.Server.BaseURL)
+
 	// 创建订单
-	result, err := h.codepay.CreatePayment(params)
+	result, err := h.codepay.CreatePayment(params, baseURL)
 	if err != nil {
 		logger.Error("Failed to create payment", zap.Error(err))
 		c.JSON(http.StatusOK, gin.H{

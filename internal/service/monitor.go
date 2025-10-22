@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/alimpay/alimpay-go/internal/config"
-	"github.com/alimpay/alimpay-go/internal/database"
-	"github.com/alimpay/alimpay-go/internal/model"
-	"github.com/alimpay/alimpay-go/pkg/lock"
-	"github.com/alimpay/alimpay-go/pkg/logger"
+	"alimpay-go/internal/config"
+	"alimpay-go/internal/database"
+	"alimpay-go/internal/model"
+	"alimpay-go/pkg/lock"
+	"alimpay-go/pkg/logger"
+
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
 )

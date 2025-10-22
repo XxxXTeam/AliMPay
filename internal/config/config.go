@@ -26,6 +26,7 @@ type ServerConfig struct {
 	Mode         string `yaml:"mode"`
 	ReadTimeout  int    `yaml:"read_timeout"`
 	WriteTimeout int    `yaml:"write_timeout"`
+	BaseURL      string `yaml:"base_url"` // 基础URL，留空则自动获取
 }
 
 // AlipayConfig 支付宝配置
