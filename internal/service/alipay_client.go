@@ -225,6 +225,9 @@ func (c *AlipayClient) generateSign(params map[string]string) (string, error) {
 	return c.Sign(signStr.String())
 }
 
+// 注意：本系统不使用 alipay.trade.query 接口（需要额外权限）
+// 完全依赖账单查询接口，和PHP版本保持一致
+
 // QueryBills 查询账单
 func (c *AlipayClient) QueryBills(startTime, endTime string, pageNo, pageSize int) (*BillQueryResponse, error) {
 	logger.Info("Querying Alipay bills",
@@ -317,13 +320,13 @@ func (c *AlipayClient) doRequest(params map[string]string) ([]byte, error) {
 		return nil, err
 	}
 
-	// 详细日志：记录响应状态和前1000字符（用于诊断API问题）
-	logger.Info("Alipay API Response",
+	// 详细日志：记录完整响应内容（用于诊断API问题）
+	logger.Info("==================== 支付宝API完整响应 ====================")
+	logger.Info("API响应状态",
 		zap.Int("status_code", resp.StatusCode),
-		zap.String("content_type", resp.Header.Get("Content-Type")),
-		zap.String("response_preview", string(body[:min(len(body), 1000)])))
-
-	logger.Debug("Alipay API response", zap.String("body", string(body)))
+		zap.String("content_type", resp.Header.Get("Content-Type")))
+	logger.Info("完整响应内容", zap.String("response", string(body)))
+	logger.Info("==========================================================")
 
 	return body, nil
 }

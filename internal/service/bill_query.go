@@ -99,14 +99,15 @@ func (s *BillQueryService) QueryBillsByDate(date string) (map[string]interface{}
 
 // QueryRecentBills 查询最近N小时的账单
 func (s *BillQueryService) QueryRecentBills(hoursBack int) (map[string]interface{}, error) {
-	// 减去5分钟以避免时间同步问题
-	endTime := time.Now().Add(-5 * time.Minute).Format("2006-01-02 15:04:05")
-	startTime := time.Now().Add(-time.Duration(hoursBack)*time.Hour - 5*time.Minute).Format("2006-01-02 15:04:05")
+	// 使用当前时间作为结束时间（不减去延迟，确保能查到最新支付）
+	endTime := time.Now().Format("2006-01-02 15:04:05")
+	startTime := time.Now().Add(-time.Duration(hoursBack) * time.Hour).Format("2006-01-02 15:04:05")
 
-	logger.Info("Querying recent bills",
-		zap.String("start_time", startTime),
-		zap.String("end_time", endTime),
-		zap.Int("hours_back", hoursBack))
+	logger.Info("📊 查询支付宝账单",
+		zap.String("开始时间", startTime),
+		zap.String("结束时间", endTime),
+		zap.Int("查询时长(小时)", hoursBack),
+		zap.String("查询范围说明", fmt.Sprintf("过去%d小时的支付记录", hoursBack)))
 
 	return s.QueryBills(startTime, endTime, 1, 100)
 }

@@ -137,7 +137,7 @@ func (h *AdminHandler) handleMarkPaid(c *gin.Context) {
 	if tradeNo != "" {
 		order, err = h.db.GetOrderByID(tradeNo)
 	} else {
-		order, err = h.db.GetOrderByOutTradeNo(pid, outTradeNo)
+		order, err = h.db.GetOrderByOutTradeNo(outTradeNo, pid)
 	}
 
 	if err != nil {

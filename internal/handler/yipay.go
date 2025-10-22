@@ -65,10 +65,17 @@ func (h *YiPayHandler) HandleQueryOrder(c *gin.Context) {
 		return
 	}
 
-	// 查询订单
-	order, err := h.db.GetOrderByOutTradeNo(pid, outTradeNo)
+	// 查询订单（注意参数顺序：outTradeNo, pid）
+	logger.Debug("Querying order",
+		zap.String("out_trade_no", outTradeNo),
+		zap.String("pid", pid))
+
+	order, err := h.db.GetOrderByOutTradeNo(outTradeNo, pid)
 	if err != nil {
-		logger.Error("Failed to query order", zap.Error(err))
+		logger.Error("Failed to query order",
+			zap.String("out_trade_no", outTradeNo),
+			zap.String("pid", pid),
+			zap.Error(err))
 		c.JSON(http.StatusOK, gin.H{
 			"code": -1,
 			"msg":  "Order not found",
@@ -77,12 +84,19 @@ func (h *YiPayHandler) HandleQueryOrder(c *gin.Context) {
 	}
 
 	if order == nil {
+		logger.Warn("Order is nil",
+			zap.String("out_trade_no", outTradeNo),
+			zap.String("pid", pid))
 		c.JSON(http.StatusOK, gin.H{
 			"code": -1,
 			"msg":  "Order not found",
 		})
 		return
 	}
+
+	logger.Info("Order found",
+		zap.String("order_id", order.ID),
+		zap.Int("status", order.Status))
 
 	// 返回标准格式
 	response := gin.H{
@@ -246,8 +260,8 @@ func (h *YiPayHandler) HandleClose(c *gin.Context) {
 		return
 	}
 
-	// 查询订单
-	order, err := h.db.GetOrderByOutTradeNo(pid, outTradeNo)
+	// 查询订单（注意参数顺序：outTradeNo, pid）
+	order, err := h.db.GetOrderByOutTradeNo(outTradeNo, pid)
 	if err != nil || order == nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code": -1,

@@ -147,27 +147,59 @@ func (m *MonitorService) RunMonitoringCycle() {
 	}
 	defer fileLock.Unlock()
 
-	logger.Info("Starting payment monitoring cycle")
+	logger.Info("========== 开始支付监听周期 ==========")
 
 	// 1. 清理过期订单
 	count, err := m.codepay.CleanupExpiredOrders()
 	if err != nil {
 		logger.Error("Failed to cleanup expired orders", zap.Error(err))
 	} else if count > 0 {
-		logger.Info("Cleaned up expired orders", zap.Int64("count", count))
+		logger.Info("✓ 清理过期订单", zap.Int64("count", count))
 	}
 
-	// 2. 查询最近的账单
+	// 2. 查询10分钟内创建的待支付订单（只监听10分钟）
+	pendingOrders, err := m.getRecentPendingOrders(10 * time.Minute)
+	if err != nil {
+		logger.Error("Failed to get pending orders", zap.Error(err))
+		return
+	}
+
+	logger.Info("📋 待支付订单统计（10分钟内创建）",
+		zap.Int("total_count", len(pendingOrders)))
+
+	if len(pendingOrders) == 0 {
+		logger.Info("✅ 没有需要监听的订单，跳过本次查询（仅监听10分钟内创建的订单）")
+		return
+	}
+
+	// 输出每个待支付订单的详细信息
+	for _, order := range pendingOrders {
+		orderAge := time.Since(order.AddTime)
+		remainingTime := 10*time.Minute - orderAge
+
+		logger.Info("🔍 待支付订单详情",
+			zap.String("订单号", order.ID),
+			zap.String("商户订单号", order.OutTradeNo),
+			zap.Float64("应付金额", order.Price),
+			zap.Float64("实付金额", order.PaymentAmount),
+			zap.String("创建时间", order.AddTime.Format("2006-01-02 15:04:05")),
+			zap.Duration("已等待", orderAge),
+			zap.Duration("剩余监听时间", remainingTime),
+			zap.String("状态", "监听中"))
+	}
+
+	// 3. 查询最近的账单
 	// 注意：这里简化了支付宝账单查询部分
 	// 在实际应用中，需要集成支付宝OpenAPI SDK来查询账单
 	bills := m.queryRecentBills()
 
 	if len(bills) == 0 {
-		logger.Debug("No recent bills found")
+		logger.Info("⚠️  支付宝账单查询无结果（可能是API未上线），请使用管理后台手动标记")
+		logger.Info("管理后台地址: http://localhost:8080/admin/dashboard")
 		return
 	}
 
-	logger.Info("Found bills to process", zap.Int("count", len(bills)))
+	logger.Info("💰 查询到支付宝账单", zap.Int("count", len(bills)))
 
 	// 3. 处理账单
 	if m.cfg.Payment.BusinessQRMode.Enabled {
@@ -269,9 +301,49 @@ func (m *MonitorService) queryRecentBills() []BillRecord {
 	return bills
 }
 
+// getPendingOrders 获取待支付订单
+func (m *MonitorService) getPendingOrders() ([]*model.Order, error) {
+	// 获取最近10分钟的待支付订单
+	since := time.Now().Add(-10 * time.Minute)
+	orders, err := m.db.GetPendingOrdersSince(since)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pending orders: %w", err)
+	}
+
+	return orders, nil
+}
+
+// getRecentPendingOrders 获取指定时间范围内的待支付订单
+func (m *MonitorService) getRecentPendingOrders(duration time.Duration) ([]*model.Order, error) {
+	since := time.Now().Add(-duration)
+	orders, err := m.db.GetPendingOrdersSince(since)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pending orders: %w", err)
+	}
+
+	// 过滤掉超过监听时间的订单
+	var recentOrders []*model.Order
+	now := time.Now()
+	for _, order := range orders {
+		orderAge := now.Sub(order.AddTime)
+		if orderAge <= duration {
+			recentOrders = append(recentOrders, order)
+		} else {
+			logger.Info("⏰ 订单超过监听时间，不再监听",
+				zap.String("订单号", order.ID),
+				zap.String("商户订单号", order.OutTradeNo),
+				zap.Duration("订单年龄", orderAge),
+				zap.Duration("监听时长", duration),
+				zap.String("说明", "订单创建超过10分钟，将由管理员手动处理"))
+		}
+	}
+
+	return recentOrders, nil
+}
+
 // processBillsForBusinessMode 处理经营码模式的账单
 func (m *MonitorService) processBillsForBusinessMode(bills []BillRecord) {
-	logger.Info("Processing bills for business QR mode")
+	logger.Info("🏪 处理经营码模式账单", zap.Int("总账单数", len(bills)))
 
 	for _, bill := range bills {
 		// 只处理收入类型的账单
@@ -279,10 +351,11 @@ func (m *MonitorService) processBillsForBusinessMode(bills []BillRecord) {
 			continue
 		}
 
-		logger.Info("Processing bill",
-			zap.String("trade_no", bill.TradeNo),
-			zap.Float64("amount", bill.Amount),
-			zap.String("trans_date", bill.TransDate))
+		logger.Info("💳 匹配支付记录",
+			zap.String("支付宝订单号", bill.TradeNo),
+			zap.Float64("金额", bill.Amount),
+			zap.String("交易时间", bill.TransDate),
+			zap.String("备注", bill.Remark))
 
 		// 根据金额查找待支付订单
 		order, err := m.db.GetPendingOrderByAmount(bill.Amount)
@@ -292,39 +365,75 @@ func (m *MonitorService) processBillsForBusinessMode(bills []BillRecord) {
 		}
 
 		if order == nil {
-			logger.Debug("No pending order found for amount", zap.Float64("amount", bill.Amount))
+			logger.Info("❌ 未找到匹配订单", zap.Float64("金额", bill.Amount))
 			continue
 		}
+
+		logger.Info("✓ 找到匹配订单",
+			zap.String("订单号", order.ID),
+			zap.String("商户订单号", order.OutTradeNo),
+			zap.Float64("订单金额", order.PaymentAmount),
+			zap.String("订单创建时间", order.AddTime.Format("2006-01-02 15:04:05")))
 
 		// 验证时间容差
 		tolerance := time.Duration(m.cfg.Payment.BusinessQRMode.MatchTolerance) * time.Second
-		billTime, _ := time.Parse("2006-01-02 15:04:05", bill.TransDate)
-		timeDiff := billTime.Sub(order.AddTime)
 
-		if timeDiff < 0 || timeDiff > tolerance {
-			logger.Warn("Order found but outside time tolerance",
-				zap.String("order_id", order.ID),
-				zap.Duration("time_diff", timeDiff),
-				zap.Duration("tolerance", tolerance))
+		// 解析支付时间（使用北京时间）
+		billTime, err := time.ParseInLocation("2006-01-02 15:04:05", bill.TransDate, time.Local)
+		if err != nil {
+			logger.Error("❌ 解析支付时间失败",
+				zap.String("支付时间", bill.TransDate),
+				zap.Error(err))
 			continue
 		}
+
+		timeDiff := billTime.Sub(order.AddTime)
+
+		logger.Info("⏰ 时间对比",
+			zap.String("支付时间", bill.TransDate),
+			zap.String("订单时间", order.AddTime.Format("2006-01-02 15:04:05")),
+			zap.Duration("时间差", timeDiff))
+
+		// 支付时间必须晚于订单创建时间（正常流程：先创建订单，后支付）
+		if timeDiff < 0 {
+			logger.Warn("❌ 支付时间早于订单创建时间，跳过",
+				zap.String("订单号", order.ID),
+				zap.String("支付时间", bill.TransDate),
+				zap.String("订单创建时间", order.AddTime.Format("2006-01-02 15:04:05")),
+				zap.Duration("时间差", timeDiff),
+				zap.String("说明", "这笔支付可能是其他订单的，不匹配当前订单"))
+			continue
+		}
+
+		// 时间差不能超过容差
+		if timeDiff > tolerance {
+			logger.Warn("⏰ 订单超时容差",
+				zap.String("订单号", order.ID),
+				zap.Duration("时间差", timeDiff),
+				zap.Duration("容差", tolerance),
+				zap.String("说明", "支付时间与订单创建时间差距过大"))
+			continue
+		}
+
+		logger.Info("✓ 时间验证通过", zap.Duration("延迟时间", timeDiff))
 
 		// 更新订单状态
 		if err := m.updateOrderToPaid(order); err != nil {
-			logger.Error("Failed to update order status", zap.Error(err))
+			logger.Error("❌ 更新订单状态失败", zap.Error(err))
 			continue
 		}
 
-		logger.Info("Order paid successfully",
-			zap.String("order_id", order.ID),
-			zap.String("out_trade_no", order.OutTradeNo),
-			zap.Float64("amount", bill.Amount))
+		logger.Info("✅ 订单支付成功",
+			zap.String("订单号", order.ID),
+			zap.String("商户订单号", order.OutTradeNo),
+			zap.Float64("金额", bill.Amount),
+			zap.String("支付宝订单号", bill.TradeNo))
 	}
 }
 
 // processBillsForTraditionalMode 处理传统模式的账单
 func (m *MonitorService) processBillsForTraditionalMode(bills []BillRecord) {
-	logger.Info("Processing bills for traditional mode")
+	logger.Info("🔐 处理传统模式账单", zap.Int("总账单数", len(bills)))
 
 	for _, bill := range bills {
 		// 只处理收入类型的账单
@@ -333,14 +442,14 @@ func (m *MonitorService) processBillsForTraditionalMode(bills []BillRecord) {
 		}
 
 		if bill.Remark == "" {
-			logger.Debug("Skipping bill with empty remark", zap.String("trade_no", bill.TradeNo))
+			logger.Debug("跳过无备注账单", zap.String("支付宝订单号", bill.TradeNo))
 			continue
 		}
 
-		logger.Info("Processing bill",
-			zap.String("trade_no", bill.TradeNo),
-			zap.Float64("amount", bill.Amount),
-			zap.String("remark", bill.Remark))
+		logger.Info("💳 处理支付记录",
+			zap.String("支付宝订单号", bill.TradeNo),
+			zap.Float64("金额", bill.Amount),
+			zap.String("备注/订单号", bill.Remark))
 
 		// 根据备注（订单号）查找订单
 		outTradeNo := bill.Remark
@@ -351,47 +460,70 @@ func (m *MonitorService) processBillsForTraditionalMode(bills []BillRecord) {
 		}
 
 		if order == nil {
-			logger.Debug("No order found for remark", zap.String("remark", bill.Remark))
+			logger.Info("❌ 未找到订单", zap.String("商户订单号", bill.Remark))
 			continue
 		}
 
+		logger.Info("✓ 找到订单",
+			zap.String("订单号", order.ID),
+			zap.String("商户订单号", order.OutTradeNo),
+			zap.Int("状态", order.Status))
+
 		if order.Status == model.OrderStatusPaid {
-			logger.Debug("Order already paid", zap.String("order_id", order.ID))
+			logger.Info("ℹ️  订单已支付，跳过", zap.String("订单号", order.ID))
 			continue
 		}
 
 		// 验证金额
 		if fmt.Sprintf("%.2f", order.Price) != fmt.Sprintf("%.2f", bill.Amount) {
-			logger.Warn("Amount mismatch",
-				zap.String("order_id", order.ID),
-				zap.Float64("expected", order.Price),
-				zap.Float64("actual", bill.Amount))
+			logger.Warn("💰 金额不匹配",
+				zap.String("订单号", order.ID),
+				zap.Float64("期望金额", order.Price),
+				zap.Float64("实际金额", bill.Amount))
 			continue
 		}
+
+		logger.Info("✓ 金额验证通过", zap.Float64("金额", bill.Amount))
 
 		// 更新订单状态
 		if err := m.updateOrderToPaid(order); err != nil {
-			logger.Error("Failed to update order status", zap.Error(err))
+			logger.Error("❌ 更新订单状态失败", zap.Error(err))
 			continue
 		}
 
-		logger.Info("Order paid successfully",
-			zap.String("order_id", order.ID),
-			zap.String("out_trade_no", order.OutTradeNo),
-			zap.Float64("amount", bill.Amount))
+		logger.Info("✅ 订单支付成功",
+			zap.String("订单号", order.ID),
+			zap.String("商户订单号", order.OutTradeNo),
+			zap.Float64("金额", bill.Amount),
+			zap.String("支付宝订单号", bill.TradeNo))
 	}
 }
 
 // updateOrderToPaid 更新订单为已支付状态
 func (m *MonitorService) updateOrderToPaid(order *model.Order) error {
+	logger.Info("🔄 更新订单状态为已支付",
+		zap.String("订单号", order.ID),
+		zap.String("商户订单号", order.OutTradeNo))
+
 	// 更新订单状态
-	if err := m.db.UpdateOrderStatus(order.ID, model.OrderStatusPaid, time.Now()); err != nil {
+	payTime := time.Now()
+	if err := m.db.UpdateOrderStatus(order.ID, model.OrderStatusPaid, payTime); err != nil {
 		return err
 	}
 
+	logger.Info("✓ 订单状态已更新",
+		zap.String("订单号", order.ID),
+		zap.String("支付时间", payTime.Format("2006-01-02 15:04:05")))
+
 	// 发送通知给商户
+	logger.Info("📤 发送支付通知给商户",
+		zap.String("订单号", order.ID),
+		zap.String("通知URL", order.NotifyURL))
+
 	if err := m.codepay.SendNotification(order); err != nil {
-		logger.Warn("Failed to send notification", zap.Error(err))
+		logger.Warn("⚠️  发送通知失败（将在后台自动重试）", zap.Error(err))
+	} else {
+		logger.Info("✓ 通知发送成功", zap.String("订单号", order.ID))
 	}
 
 	return nil
