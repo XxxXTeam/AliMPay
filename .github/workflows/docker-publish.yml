@@ -45,7 +45,7 @@ jobs:
 
       # Login to Docker Hub (optional, requires secrets)
       - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != ''
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.DOCKERHUB_REGISTRY }}
@@ -71,7 +71,6 @@ jobs:
       # Extract metadata for Docker Hub
       - name: Extract metadata (Docker Hub)
         id: meta-dockerhub
-        if: secrets.DOCKERHUB_USERNAME != ''
         uses: docker/metadata-action@v5
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/alimpay
@@ -102,7 +101,7 @@ jobs:
       # Build and push to Docker Hub
       - name: Build and push Docker image (Docker Hub)
         id: build-dockerhub
-        if: github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != ''
+        if: github.event_name != 'pull_request' && steps.meta-dockerhub.outcome == 'success'
         uses: docker/build-push-action@v5
         with:
           context: .
