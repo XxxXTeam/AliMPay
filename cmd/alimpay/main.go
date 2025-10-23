@@ -143,6 +143,13 @@ func main() {
 	wsHandler := handler.NewWebSocketHandler(db)
 	adminWsHandler := handler.NewAdminWebSocketHandler(db)
 
+	// 初始化管理员认证中间件
+	merchantInfo := codepayService.GetMerchantInfo()
+	adminAuth := middleware.NewAdminAuthMiddleware(
+		merchantInfo["id"].(string),
+		merchantInfo["key"].(string),
+	)
+
 	// 注册路由 - 易支付/码支付标准接口
 
 	// API接口（兼容模式） - 支持.php后缀
@@ -214,11 +221,19 @@ func main() {
 	router.GET("/ws/order", wsHandler.HandleWebSocket)      // 用户支付页面WebSocket
 	router.GET("/ws/admin", adminWsHandler.HandleWebSocket) // 管理后台WebSocket
 
-	// 管理接口
-	router.GET("/admin/dashboard", adminHandler.HandleDashboard) // 管理后台页面
-	router.GET("/admin/orders", adminHandler.HandleGetOrders)    // 获取订单列表
-	router.GET("/admin", adminHandler.HandleAdmin)               // 管理操作API
-	router.POST("/admin", adminHandler.HandleAdmin)
+	// 管理后台 - 登录/登出（无需认证）
+	router.GET("/admin/login", adminAuth.HandleLogin)
+	router.POST("/admin/login", adminAuth.HandleLogin)
+	router.GET("/admin/logout", adminAuth.HandleLogout)
+
+	// 管理接口 - 需要认证
+	router.GET("/admin/dashboard", adminAuth.RequireAuth(), adminHandler.HandleDashboard) // 管理后台页面
+	router.GET("/admin/orders", adminAuth.RequireAuth(), adminHandler.HandleGetOrders)    // 获取订单列表
+	router.POST("/admin/action", adminAuth.RequireAuth(), adminHandler.HandleAdminAction) // 新的操作API（基于session）
+
+	// 管理接口 - 兼容旧API（需要pid/key参数）
+	router.GET("/admin", adminHandler.HandleAdmin)  // 管理操作API（旧版）
+	router.POST("/admin", adminHandler.HandleAdmin) // 管理操作API（旧版）
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 
