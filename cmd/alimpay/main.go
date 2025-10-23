@@ -116,6 +116,7 @@ func main() {
 	router := gin.New()
 	router.Use(middleware.Recovery())
 	router.Use(middleware.Logger())
+	router.Use(middleware.PathNormalizer()) // 路径规范化，处理//submit等情况
 
 	// 从嵌入的文件系统加载HTML模板
 	tmpl := template.Must(template.New("").ParseFS(web.Templates, "templates/*.html"))
@@ -143,47 +144,65 @@ func main() {
 
 	// 注册路由 - 易支付/码支付标准接口
 
-	// API接口（兼容模式）
+	// API接口（兼容模式） - 支持.php后缀
 	router.GET("/api", apiHandler.HandleAction)
 	router.POST("/api", apiHandler.HandleAction)
+	router.GET("/api.php", apiHandler.HandleAction)
+	router.POST("/api.php", apiHandler.HandleAction)
 
-	// MAPI接口（码支付标准）
+	// MAPI接口（码支付标准） - 支持.php后缀
 	router.GET("/mapi", yipayHandler.HandleMAPI)
 	router.POST("/mapi", yipayHandler.HandleMAPI)
+	router.GET("/mapi.php", yipayHandler.HandleMAPI)
+	router.POST("/mapi.php", yipayHandler.HandleMAPI)
 
-	// Submit接口（创建支付）
+	// Submit接口（创建支付） - 支持.php后缀
 	router.GET("/submit", submitHandler.HandleSubmit)
 	router.POST("/submit", submitHandler.HandleSubmit)
 	router.GET("/submit.php", submitHandler.HandleSubmit)
 	router.POST("/submit.php", submitHandler.HandleSubmit)
 
-	// API提交接口（易支付标准）
+	// API提交接口（易支付标准） - 支持.php后缀
 	router.GET("/api/submit", yipayHandler.HandleSubmitAPI)
 	router.POST("/api/submit", yipayHandler.HandleSubmitAPI)
+	router.GET("/api/submit.php", yipayHandler.HandleSubmitAPI)
+	router.POST("/api/submit.php", yipayHandler.HandleSubmitAPI)
 
-	// 查询接口
+	// 查询接口 - 支持.php后缀
 	router.GET("/api/query", yipayHandler.HandleQueryMerchant)
 	router.POST("/api/query", yipayHandler.HandleQueryMerchant)
+	router.GET("/api/query.php", yipayHandler.HandleQueryMerchant)
+	router.POST("/api/query.php", yipayHandler.HandleQueryMerchant)
 	router.GET("/api/order", yipayHandler.HandleQueryOrder)
 	router.POST("/api/order", yipayHandler.HandleQueryOrder)
+	router.GET("/api/order.php", yipayHandler.HandleQueryOrder)
+	router.POST("/api/order.php", yipayHandler.HandleQueryOrder)
 
-	// 订单管理
+	// 订单管理 - 支持.php后缀
 	router.GET("/api/close", yipayHandler.HandleClose)
 	router.POST("/api/close", yipayHandler.HandleClose)
+	router.GET("/api/close.php", yipayHandler.HandleClose)
+	router.POST("/api/close.php", yipayHandler.HandleClose)
 	router.GET("/api/refund", yipayHandler.HandleRefund)
 	router.POST("/api/refund", yipayHandler.HandleRefund)
+	router.GET("/api/refund.php", yipayHandler.HandleRefund)
+	router.POST("/api/refund.php", yipayHandler.HandleRefund)
 
-	// 回调接口
+	// 回调接口 - 支持.php后缀
 	router.GET("/notify", yipayHandler.HandleCallback)
 	router.POST("/notify", yipayHandler.HandleCallback)
 	router.GET("/notify.php", yipayHandler.HandleCallback)
 	router.POST("/notify.php", yipayHandler.HandleCallback)
 	router.GET("/callback", yipayHandler.HandleCallback)
 	router.POST("/callback", yipayHandler.HandleCallback)
+	router.GET("/callback.php", yipayHandler.HandleCallback)
+	router.POST("/callback.php", yipayHandler.HandleCallback)
 
-	// 签名验证接口
+	// 签名验证接口 - 支持.php后缀
 	router.GET("/api/checksign", yipayHandler.HandleCheckSign)
 	router.POST("/api/checksign", yipayHandler.HandleCheckSign)
+	router.GET("/api/checksign.php", yipayHandler.HandleCheckSign)
+	router.POST("/api/checksign.php", yipayHandler.HandleCheckSign)
 
 	// 系统接口
 	router.GET("/health", healthHandler.HandleHealth)
