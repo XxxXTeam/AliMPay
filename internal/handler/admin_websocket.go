@@ -215,7 +215,7 @@ func (h *AdminWebSocketHandler) sendStats(conn *websocket.Conn) {
 	}
 
 	h.sendMessage(conn, message)
-	
+
 	logger.Debug("Stats sent",
 		zap.Int("pending", len(pendingOrders)),
 		zap.Int("paid", len(paidOrders)),
