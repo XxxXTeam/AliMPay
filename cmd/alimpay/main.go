@@ -217,23 +217,36 @@ func main() {
 	router.GET("/qrcode", qrcodeHandler.HandleQRCode)
 	router.GET("/pay", payHandler.HandlePayPage) // 支付页面（扫码后跳转）
 
-	// WebSocket接口 - 实时订单状态推送
-	router.GET("/ws/order", wsHandler.HandleWebSocket)      // 用户支付页面WebSocket
-	router.GET("/ws/admin", adminWsHandler.HandleWebSocket) // 管理后台WebSocket
+	// WebSocket接口 - 实时订单状态推送（用户支付页面）
+	router.GET("/ws/order", wsHandler.HandleWebSocket)
 
-	// 管理后台 - 登录/登出（无需认证）
+	// ========================================
+	// 管理后台路由配置
+	// ========================================
+
+	// 公开路由 - 登录/登出（无需认证）
 	router.GET("/admin/login", adminAuth.HandleLogin)
 	router.POST("/admin/login", adminAuth.HandleLogin)
 	router.GET("/admin/logout", adminAuth.HandleLogout)
 
-	// 管理接口 - 需要认证
-	router.GET("/admin/dashboard", adminAuth.RequireAuth(), adminHandler.HandleDashboard) // 管理后台页面
-	router.GET("/admin/orders", adminAuth.RequireAuth(), adminHandler.HandleGetOrders)    // 获取订单列表
-	router.POST("/admin/action", adminAuth.RequireAuth(), adminHandler.HandleAdminAction) // 新的操作API（基于session）
+	// 受保护路由组 - 所有 /admin/* 路由都需要认证（全局路由守卫）
+	adminGroup := router.Group("/admin")
+	adminGroup.Use(adminAuth.RequireAuth())
+	{
+		// 管理后台页面
+		adminGroup.GET("/dashboard", adminHandler.HandleDashboard)
 
-	// 管理接口 - 兼容旧API（需要pid/key参数）
-	router.GET("/admin", adminHandler.HandleAdmin)  // 管理操作API（旧版）
-	router.POST("/admin", adminHandler.HandleAdmin) // 管理操作API（旧版）
+		// 订单管理API
+		adminGroup.GET("/orders", adminHandler.HandleGetOrders)    // 获取订单列表
+		adminGroup.POST("/action", adminHandler.HandleAdminAction) // 执行操作（新API）
+
+		// WebSocket实时推送（需要认证）
+		adminGroup.GET("/ws", adminWsHandler.HandleWebSocket)
+	}
+
+	// 兼容旧API - 使用pid/key参数认证（不使用session）
+	router.GET("/admin", adminHandler.HandleAdmin)
+	router.POST("/admin", adminHandler.HandleAdmin)
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 

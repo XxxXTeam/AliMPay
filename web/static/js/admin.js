@@ -22,7 +22,7 @@
     const API = {
         orders: '/admin/orders',
         action: '/admin/action',
-        wsAdmin: '/ws/admin',
+        wsAdmin: '/admin/ws', // 管理后台WebSocket（需要认证）
         logout: '/admin/logout'
     };
 
