@@ -226,6 +226,16 @@ func (s *CodePayService) CreatePayment(params map[string]string, baseURL string)
 		response["business_qr_mode"] = true
 		response["payment_instruction"] = fmt.Sprintf("请使用支付宝扫描二维码，确认支付 %.2f 元", paymentAmount)
 
+		// 生成支付宝直接拉起链接（如果配置了二维码ID）
+		if s.cfg.Payment.BusinessQRMode.QRCodeID != "" {
+			alipayDeepLink := utils.GenerateAlipayDeepLink(
+				s.cfg.Payment.BusinessQRMode.QRCodeID,
+				paymentAmount,
+				params["name"], // 使用订单名称作为备注
+			)
+			response["alipay_deep_link"] = alipayDeepLink
+		}
+
 		if amountAdjusted {
 			response["amount_adjusted"] = true
 			response["adjustment_note"] = adjustmentNote
@@ -278,6 +288,16 @@ func (s *CodePayService) buildOrderResponse(order *model.Order, baseURL string) 
 		response["qr_code_url"] = qrCodeURL
 		response["business_qr_mode"] = true
 		response["payment_instruction"] = fmt.Sprintf("请使用支付宝扫描二维码，支付金额：%.2f 元", order.PaymentAmount)
+
+		// 生成支付宝直接拉起链接（如果配置了二维码ID）
+		if s.cfg.Payment.BusinessQRMode.QRCodeID != "" {
+			alipayDeepLink := utils.GenerateAlipayDeepLink(
+				s.cfg.Payment.BusinessQRMode.QRCodeID,
+				order.PaymentAmount,
+				order.Name, // 使用订单名称作为备注
+			)
+			response["alipay_deep_link"] = alipayDeepLink
+		}
 
 		// 检查金额是否被调整
 		if order.PaymentAmount != order.Price {

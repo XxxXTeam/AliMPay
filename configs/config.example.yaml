@@ -67,6 +67,7 @@ payment:
   business_qr_mode:
     enabled: true
     qr_code_path: "./qrcode/business_qr.png"
+    qr_code_id: ""  # 支付宝二维码ID，用于直接拉起支付宝，例如: fkx12345678901234
     amount_offset: 0.01
     match_tolerance: 300
     payment_timeout: 300

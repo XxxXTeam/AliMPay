@@ -71,12 +71,13 @@ func (h *SubmitHandler) renderPaymentPage(c *gin.Context, result map[string]inte
 		"ReturnURL":  params["return_url"],
 
 		// 支付信息
-		"TradeNo":       getString(result, "trade_no"),
-		"PaymentAmount": getFloat(result, "payment_amount"),
-		"PaymentURL":    getString(result, "payment_url"),
-		"QrCode":        getString(result, "qr_code"),
-		"QrCodeURL":     getString(result, "qr_code_url"),
-		"CreateTime":    getString(result, "create_time"), // 订单创建时间
+		"TradeNo":        getString(result, "trade_no"),
+		"PaymentAmount":  getFloat(result, "payment_amount"),
+		"PaymentURL":     getString(result, "payment_url"),
+		"QrCode":         getString(result, "qr_code"),
+		"QrCodeURL":      getString(result, "qr_code_url"),
+		"AlipayDeepLink": getString(result, "alipay_deep_link"),
+		"CreateTime":     getString(result, "create_time"), // 订单创建时间
 
 		// 模式和提示
 		"BusinessQrMode": getBool(result, "business_qr_mode"),

@@ -11,6 +11,7 @@ import (
 	"alimpay-go/internal/config"
 	"alimpay-go/internal/database"
 	"alimpay-go/pkg/logger"
+	"alimpay-go/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -139,6 +140,19 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 		zap.String("trade_no", tradeNo),
 		zap.Int("qr_code_size", len(qrCodeData)))
 
+	// 生成支付宝直接拉起链接（如果配置了二维码ID）
+	var alipayDeepLink string
+	if h.cfg.Payment.BusinessQRMode.QRCodeID != "" {
+		alipayDeepLink = utils.GenerateAlipayDeepLink(
+			h.cfg.Payment.BusinessQRMode.QRCodeID,
+			amount,
+			order.Name, // 使用订单名称作为备注
+		)
+		logger.Info("Generated Alipay deep link",
+			zap.String("trade_no", tradeNo),
+			zap.String("qr_code_id", h.cfg.Payment.BusinessQRMode.QRCodeID))
+	}
+
 	// 渲染支付页面
 	c.HTML(http.StatusOK, "pay.html", gin.H{
 		"order": gin.H{
@@ -150,7 +164,8 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 			"create_time":    order.AddTime.Format("2006-01-02 15:04:05"),
 			"pid":            order.PID,
 		},
-		"qr_code_data": dataURI,
+		"qr_code_data":     dataURI,
+		"alipay_deep_link": alipayDeepLink,
 		"instructions": gin.H{
 			"step1": "打开支付宝，点击「扫一扫」",
 			"step2": fmt.Sprintf("扫描下方二维码，输入金额 %.2f 元", amount),
