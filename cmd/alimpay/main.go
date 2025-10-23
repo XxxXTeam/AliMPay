@@ -125,12 +125,17 @@ func main() {
 
 	logger.Success("Templates loaded from embedded filesystem", zap.Int("count", len(tmpl.Templates())))
 
-	// 静态文件 - 使用嵌入的文件系统
+	// 静态文件 - 使用嵌入的文件系统，并添加缓存控制
 	staticFS, err := web.GetStaticFS()
 	if err != nil {
 		logger.Fatal("Failed to get static filesystem", zap.Error(err))
 	}
-	router.StaticFS("/static", http.FS(staticFS))
+
+	// 静态资源路由组 - 添加长期缓存
+	staticGroup := router.Group("/static")
+	staticGroup.Use(middleware.StaticCacheMiddleware())
+	staticGroup.Use(middleware.CompressMiddleware())
+	staticGroup.StaticFS("/", http.FS(staticFS))
 
 	// 初始化handlers
 	apiHandler := handler.NewAPIHandler(codepayService, monitorService, cfg)

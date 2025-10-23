@@ -202,14 +202,31 @@
             }
 
             // 构建支付宝URL Scheme
-            const alipayUrl = encodeURIComponent(`https://qr.alipay.com/${qrCodeId}?amount=${amount}&remark=${tradeNo}`);
-            const scheme = `alipays://platformapi/startapp?saId=10000007&url=${alipayUrl}`;
+            // 方式1: 直接扫码（推荐，最可靠）
+            const qrCodeUrl = `https://qr.alipay.com/${qrCodeId}`;
+         //   const scheme1 = `alipays://platformapi/startapp?appId=20000123&actionType=scan&barcodeType=qrcode&qrcode=${encodeURIComponent(qrCodeUrl)}`;
+            
+            // 方式2: 转账到码商（备用）
+            const scheme = `alipays://platformapi/startapp?saId=10000007&url=${encodeURIComponent(qrCodeUrl)}`;
+            
+            // 方式3: 直接打开支付宝扫一扫
+            const scheme2 = 'alipays://platformapi/startapp?appId=10000007';
 
-            console.log('[Alipay] Launching with scheme:', scheme);
+            console.log('[Alipay] QR Code ID:', qrCodeId);
+            console.log('[Alipay] Amount:', amount);
+            console.log('[Alipay] Launching with scheme method 1:', scheme1);
             showToast('正在打开支付宝...', 'success');
 
-            // 尝试拉起支付宝
-            window.location.href = scheme;
+            // 尝试拉起支付宝（使用最可靠的方式）
+            window.location.href = scheme1;
+            
+            // 备用方案：如果3秒后还在页面，尝试其他方式
+            setTimeout(() => {
+                if (document.hasFocus()) {
+                    console.log('[Alipay] Trying alternative scheme...');
+                    window.location.href = scheme3; // 打开扫一扫
+                }
+            }, 3000);
         }
 
         /**
