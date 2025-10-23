@@ -1,3 +1,6 @@
+// Package logger 日志管理包
+// @author AliMPay Team
+// @description 提供统一的日志管理功能，支持日志轮换、彩色输出等
 package logger
 
 import (
@@ -9,6 +12,7 @@ import (
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -138,15 +142,22 @@ func Init(cfg *Config) error {
 			return fmt.Errorf("failed to create log directory: %w", err)
 		}
 
-		// 打开日志文件
-		logFile, err := os.OpenFile(cfg.FilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return fmt.Errorf("failed to open log file: %w", err)
+		// 使用lumberjack实现日志轮换
+		// 当日志文件达到MaxSize时自动切割
+		// 保留最多MaxBackups个备份文件
+		// 文件保留MaxAge天后自动删除
+		lumberJackLogger := &lumberjack.Logger{
+			Filename:   cfg.FilePath,
+			MaxSize:    cfg.MaxSize,    // MB
+			MaxBackups: cfg.MaxBackups, // 保留备份数
+			MaxAge:     cfg.MaxAge,     // 天数
+			Compress:   cfg.Compress,   // 是否压缩
+			LocalTime:  true,           // 使用本地时间
 		}
 
 		// 文件使用JSON格式，便于解析
 		fileEncoder := zapcore.NewJSONEncoder(fileEncoderConfig)
-		fileWriter := zapcore.AddSync(logFile)
+		fileWriter := zapcore.AddSync(lumberJackLogger)
 		fileCore := zapcore.NewCore(fileEncoder, fileWriter, level)
 		cores = append(cores, fileCore)
 	}

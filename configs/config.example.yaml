@@ -91,7 +91,7 @@ merchant:
   key: ""
   
   # 费率
-  rate: 96
+  rate: 0
 
 logging:
   level: "info"  # debug, info, warn, error

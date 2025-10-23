@@ -1,10 +1,13 @@
+// Package main 应用程序入口
+// @author AliMPay Team
+// @description AliMPay 支付系统主程序，负责初始化各个模块并启动HTTP服务
 package main
 
 import (
-	"embed"
 	"flag"
 	"fmt"
 	"html/template"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,13 +19,11 @@ import (
 	"alimpay-go/internal/middleware"
 	"alimpay-go/internal/service"
 	"alimpay-go/pkg/logger"
+	"alimpay-go/web"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
-
-//go:embed web/templates/*.html
-var templates embed.FS
 
 func main() {
 	// 设置全局时区为北京时间（和PHP版本保持一致）
@@ -116,13 +117,17 @@ func main() {
 	router.Use(middleware.Logger())
 
 	// 从嵌入的文件系统加载HTML模板
-	tmpl := template.Must(template.New("").ParseFS(templates, "web/templates/*.html"))
+	tmpl := template.Must(template.New("").ParseFS(web.Templates, "templates/*.html"))
 	router.SetHTMLTemplate(tmpl)
 
-	logger.Success("Templates loaded from embedded filesystem")
+	logger.Success("Templates loaded from embedded filesystem", zap.Int("count", len(tmpl.Templates())))
 
-	// 静态文件
-	router.Static("/static", "./web/static")
+	// 静态文件 - 使用嵌入的文件系统
+	staticFS, err := web.GetStaticFS()
+	if err != nil {
+		logger.Fatal("Failed to get static filesystem", zap.Error(err))
+	}
+	router.StaticFS("/static", http.FS(staticFS))
 
 	// 初始化handlers
 	apiHandler := handler.NewAPIHandler(codepayService, monitorService, cfg)
