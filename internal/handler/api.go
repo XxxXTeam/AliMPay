@@ -176,10 +176,22 @@ func (h *APIHandler) handleQueryOrders(c *gin.Context) {
 func (h *APIHandler) handleCreatePayment(c *gin.Context) {
 	params := make(map[string]string)
 
-	// 获取所有参数（同时支持price和money，兼容易支付）
-	fields := []string{"pid", "type", "out_trade_no", "notify_url", "return_url", "name", "money", "price", "sitename", "sign", "sign_type"}
-	for _, field := range fields {
-		params[field] = h.getParam(c, field)
+	// 获取所有参数（兼容易支付：不限制参数字段）
+	// 从 Query 参数获取
+	for key, values := range c.Request.URL.Query() {
+		if len(values) > 0 {
+			params[key] = values[0]
+		}
+	}
+
+	// 从 POST 表单获取（如果存在则覆盖）
+	if c.Request.Method == "POST" {
+		c.Request.ParseForm()
+		for key, values := range c.Request.PostForm {
+			if len(values) > 0 {
+				params[key] = values[0]
+			}
+		}
 	}
 
 	// 兼容易支付：如果没有money但有price，复制price到money

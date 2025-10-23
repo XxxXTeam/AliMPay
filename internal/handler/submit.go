@@ -28,18 +28,27 @@ func NewSubmitHandler(codepay *service.CodePayService, cfg *config.Config) *Subm
 
 // HandleSubmit 处理支付页面请求
 func (h *SubmitHandler) HandleSubmit(c *gin.Context) {
-	// 获取所有参数
+	// 获取所有参数（兼容易支付：不限制参数字段）
 	params := make(map[string]string)
-	fields := []string{"pid", "type", "out_trade_no", "notify_url", "return_url", "name", "money", "sitename", "sign", "sign_type"}
 
-	for _, field := range fields {
-		value := c.Query(field)
-		if value == "" {
-			value = c.PostForm(field)
+	// 从 Query 参数获取
+	for key, values := range c.Request.URL.Query() {
+		if len(values) > 0 {
+			params[key] = values[0]
 		}
-		params[field] = value
 	}
 
+	// 从 POST 表单获取（如果存在则覆盖）
+	if c.Request.Method == "POST" {
+		c.Request.ParseForm()
+		for key, values := range c.Request.PostForm {
+			if len(values) > 0 {
+				params[key] = values[0]
+			}
+		}
+	}
+
+	// 设置默认签名类型
 	if params["sign_type"] == "" {
 		params["sign_type"] = "MD5"
 	}
