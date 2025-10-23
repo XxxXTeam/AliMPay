@@ -10,19 +10,20 @@ Description: 提供WebSocket连接管理，用于实时推送订单支付状态�
   - 支持多客户端订阅同一订单
 
 连接流程:
-  1. 客户端通过 /ws/order?order_id=xxx 建立连接
-  2. 服务器将连接加入订阅池
-  3. 订单状态更新时，推送消息给所有订阅者
-  4. 连接断开时自动清理
+ 1. 客户端通过 /ws/order?order_id=xxx 建立连接
+ 2. 服务器将连接加入订阅池
+ 3. 订单状态更新时，推送消息给所有订阅者
+ 4. 连接断开时自动清理
 
 消息格式:
-  {
-    "type": "status_update",
-    "order_id": "xxx",
-    "status": 1,
-    "pay_time": "2024-01-01 12:00:00",
-    "timestamp": 1234567890
-  }
+
+	{
+	  "type": "status_update",
+	  "order_id": "xxx",
+	  "status": 1,
+	  "pay_time": "2024-01-01 12:00:00",
+	  "timestamp": 1234567890
+	}
 */
 package handler
 
@@ -33,6 +34,7 @@ import (
 	"time"
 
 	"alimpay-go/internal/database"
+	"alimpay-go/internal/events"
 	"alimpay-go/internal/model"
 	"alimpay-go/pkg/logger"
 
@@ -68,22 +70,23 @@ OrderStatusMessage 订单状态消息
   - Timestamp: 消息时间戳
 */
 type OrderStatusMessage struct {
-	Type      string `json:"type"`       // 消息类型: status_update
-	OrderID   string `json:"order_id"`   // 订单号
-	Status    int    `json:"status"`     // 订单状态
-	PayTime   string `json:"pay_time"`   // 支付时间
-	Timestamp int64  `json:"timestamp"`  // 时间戳
+	Type      string `json:"type"`      // 消息类型: status_update
+	OrderID   string `json:"order_id"`  // 订单号
+	Status    int    `json:"status"`    // 订单状态
+	PayTime   string `json:"pay_time"`  // 支付时间
+	Timestamp int64  `json:"timestamp"` // 时间戳
 }
 
 /*
 NewWebSocketHandler 创建WebSocket处理器
 参数:
   - db: 数据库实例
+
 返回:
   - *WebSocketHandler: WebSocket处理器实例
 */
 func NewWebSocketHandler(db *database.DB) *WebSocketHandler {
-	return &WebSocketHandler{
+	handler := &WebSocketHandler{
 		db: db,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
@@ -95,6 +98,19 @@ func NewWebSocketHandler(db *database.DB) *WebSocketHandler {
 		},
 		subscribers: make(map[string][]*websocket.Conn),
 	}
+
+	// 订阅订单支付事件，自动推送给WebSocket客户端
+	events.Subscribe(events.EventOrderPaid, func(data interface{}) {
+		order, ok := data.(*model.Order)
+		if !ok {
+			return
+		}
+		handler.BroadcastOrderUpdate(order)
+	})
+
+	logger.Info("WebSocket handler initialized with event subscription")
+
+	return handler
 }
 
 /*
@@ -103,8 +119,10 @@ HandleWebSocket 处理WebSocket连接请求
   - 升级HTTP连接为WebSocket
   - 订阅指定订单的状态更新
   - 维持连接并处理心跳
+
 参数:
   - c: Gin上下文
+
 URL参数:
   - order_id: 要订阅的订单号
 */
@@ -144,6 +162,7 @@ handleConnection 处理WebSocket连接的生命周期
   - 读取客户端消息(心跳)
   - 检测连接断开
   - 清理订阅
+
 参数:
   - conn: WebSocket连接
   - orderID: 订单号
@@ -315,6 +334,7 @@ func (h *WebSocketHandler) unsubscribe(orderID string, conn *websocket.Conn) {
 formatPayTime 格式化支付时间
 参数:
   - order: 订单信息
+
 返回:
   - string: 格式化的支付时间，如果未支付返回空字符串
 */
@@ -345,4 +365,3 @@ func (h *WebSocketHandler) GetStats() map[string]interface{} {
 		"total_connections":       totalConnections,
 	}
 }
-

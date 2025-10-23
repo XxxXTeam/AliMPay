@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"html/template"
@@ -197,17 +198,26 @@ func main() {
 	router.GET("/admin", adminHandler.HandleAdmin)               // 管理操作API
 	router.POST("/admin", adminHandler.HandleAdmin)
 
-	// 启动HTTP服务器
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+	server := &http.Server{
+		Addr:         addr,
+		Handler:      router,
+		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
+		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
+	}
+
+	logger.Success("Server starting",
+		zap.String("address", addr),
+		zap.String("mode", cfg.Server.Mode),
+		zap.Bool("http2", true))
 
 	// 优雅退出
 	go func() {
-		if err := router.Run(addr); err != nil {
+
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatal("Failed to start HTTP server", zap.Error(err))
 		}
 	}()
-
-	// 打印商户信息（美化版）
 	merchantInfo := codepayService.GetMerchantInfo()
 
 	fmt.Println("\n╔════════════════════════════════════════════════════════╗")
@@ -231,5 +241,18 @@ func main() {
 
 	fmt.Println()
 	logger.Warn("Received shutdown signal, gracefully stopping...")
+
+	// 优雅关闭服务器
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		logger.Error("Server forced to shutdown", zap.Error(err))
+	}
+
+	// 停止监控服务
+	monitorService.Stop()
+
+	logger.Info("Server stopped gracefully")
 	logger.Sync()
 }

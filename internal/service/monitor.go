@@ -9,6 +9,7 @@ import (
 
 	"alimpay-go/internal/config"
 	"alimpay-go/internal/database"
+	"alimpay-go/internal/events"
 	"alimpay-go/internal/model"
 	"alimpay-go/internal/worker"
 	"alimpay-go/pkg/lock"
@@ -288,6 +289,13 @@ func (m *MonitorService) updateOrderToPaid(order *model.Order, alipayTradeNo str
 		zap.String("merchant_order_no", order.OutTradeNo),
 		zap.Float64("amount", order.PaymentAmount),
 		zap.String("alipay_trade_no", alipayTradeNo))
+
+	// 重新获取更新后的订单信息
+	updatedOrder, err := m.db.GetOrderByID(order.ID)
+	if err == nil && updatedOrder != nil {
+		// 发布订单支付事件（触发WebSocket推送等）
+		events.PublishOrderPaid(updatedOrder)
+	}
 
 	// 发送通知给商户
 	if err := m.codepay.SendNotification(order); err != nil {
