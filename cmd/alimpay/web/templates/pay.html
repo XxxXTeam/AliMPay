@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="支付宝扫码支付">
+    <title>扫码支付 - AliMPay</title>
+    <link rel="stylesheet" href="/static/css/payment.css">
+</head>
+<body>
+    <div class="payment-container">
+        <!-- Header -->
+        <div class="payment-header">
+            <div class="logo">💰</div>
+            <h1>支付宝扫码支付</h1>
+            <p>请使用支付宝APP扫描下方二维码完成支付</p>
+        </div>
+
+        <!-- Body -->
+        <div class="payment-body">
+            <!-- Order Information -->
+            <div class="order-info">
+                <div class="order-info-row">
+                    <span class="order-info-label">订单号</span>
+                    <span class="order-info-value"><code>{{.order.trade_no}}</code></span>
+                </div>
+                <div class="order-info-row">
+                    <span class="order-info-label">商品名称</span>
+                    <span class="order-info-value">{{.order.name}}</span>
+                </div>
+                <div class="order-info-row">
+                    <span class="order-info-label">订单金额</span>
+                    <span class="order-info-value">¥{{.order.amount}}</span>
+                </div>
+                <div class="order-info-row">
+                    <span class="order-info-label">应付金额</span>
+                    <span class="order-info-value amount">¥{{.order.payment_amount}}</span>
+                </div>
+                <div class="order-info-row">
+                    <span class="order-info-label">创建时间</span>
+                    <span class="order-info-value">{{.order.create_time}}</span>
+                </div>
+            </div>
+
+            <!-- QR Code Section -->
+            <div class="qrcode-section">
+                <div class="qrcode-wrapper">
+                    <img src="{{.qr_code_data}}" alt="支付二维码" id="paymentQRCode">
+                </div>
+
+                {{if .qr_code_id}}
+                <!-- Mobile Alipay Launch Button -->
+                <div class="mobile-pay-section">
+                    <button class="alipay-launch-btn" id="alipayLaunchBtn" onclick="launchAlipay()">
+                        <svg class="alipay-icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
+                            <path d="M1024 701.9v202.8c0 66.6-53.9 120.4-120.4 120.4H120.4C53.9 1025.1 0 971.3 0 904.7V120.4C0 53.9 53.9 0 120.4 0h783.1c66.6 0 120.4 53.9 120.4 120.4V701.9z" fill="#00A0E9"/>
+                            <path d="M928.9 735.7c-99.7-47.4-244.8-110.9-325.6-146.5 21.9-36.3 39.3-75.8 51.6-117.6H546v-64.3h199.4v-38.7H546v-96.8h-38.7c0 0 0 0 0 0H444.2v96.8H244.8v38.7h199.4v64.3H335.3c-32.3 116.5-103.9 217.4-203.5 289.2 51.6 39.3 122.5 72.6 171.1 90.6 90.6-77.4 154.8-184.5 184.5-315.5h258.1c-19.4 64.3-45.2 125.8-77.4 181.3 38.7 16.1 141.9 58.1 225.8 96.8V735.7z" fill="#FFFFFF"/>
+                        </svg>
+                        <span>手机端拉起支付宝</span>
+                    </button>
+                    <p class="mobile-pay-tip">适用于手机浏览器，点击直接打开支付宝APP</p>
+                </div>
+                {{end}}
+
+                <div class="qrcode-tips">
+                    <div class="tip-icon">💡</div>
+                    <p><strong>支付提示：</strong></p>
+                    <p>请务必支付准确金额：<strong style="color: #ff4d4f;">¥{{.order.payment_amount}}</strong></p>
+                    <p>支付时无需填写备注信息</p>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="instructions">
+                <h3>
+                    <span>📋</span>
+                    <span>支付步骤</span>
+                </h3>
+                <div class="instruction-step">
+                    <div class="step-number">1</div>
+                    <div class="step-text">打开支付宝APP，点击首页「扫一扫」</div>
+                </div>
+                <div class="instruction-step">
+                    <div class="step-number">2</div>
+                    <div class="step-text">扫描上方二维码，输入金额 <strong>¥{{.order.payment_amount}}</strong></div>
+                </div>
+                <div class="instruction-step">
+                    <div class="step-number">3</div>
+                    <div class="step-text">确认支付后，页面将自动跳转</div>
+                </div>
+            </div>
+
+            <!-- Status Section -->
+            <div class="status-section">
+                <div class="status-indicator checking" id="statusIndicator">
+                    <span class="status-text">正在检测支付状态...</span>
+                </div>
+                <div class="countdown">
+                    请在 <span class="countdown-time" id="countdownTime">5:00</span> 内完成支付
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="payment-footer">
+            <p>支付遇到问题？<a href="javascript:void(0)" onclick="contactSupport()">联系客服</a></p>
+            <p style="margin-top: 8px; color: #00000040;">Powered by AliMPay · 安全支付保障</p>
+        </div>
+    </div>
+
+    <!-- Hidden data for JavaScript -->
+    <div style="display: none;">
+        <div data-pid="{{.order.pid}}"></div>
+        <div data-qrcode-id="{{.qr_code_id}}"></div>
+        <div data-amount="{{.order.payment_amount}}"></div>
+        <div data-trade-no="{{.order.trade_no}}"></div>
+    </div>
+
+    <script src="/static/js/payment.js"></script>
+    <script>
+        function contactSupport() {
+            alert('如需帮助，请联系商户客服\n\n订单号：{{.order.trade_no}}');
+        }
+
+        // 拉起支付宝APP
+        function launchAlipay() {
+            const qrCodeId = document.querySelector('[data-qrcode-id]').getAttribute('data-qrcode-id');
+            const amount = document.querySelector('[data-amount]').getAttribute('data-amount');
+            const tradeNo = document.querySelector('[data-trade-no]').getAttribute('data-trade-no');
+
+            if (!qrCodeId) {
+                alert('系统配置错误：缺少收款码ID');
+                return;
+            }
+
+            // 构建支付宝URL Scheme
+            // alipays://platformapi/startapp?saId=10000007&url=https://qr.alipay.com/{qrCodeId}?amount={amount}&remark={remark}
+            const alipayUrl = encodeURIComponent(`https://qr.alipay.com/${qrCodeId}?amount=${amount}&remark=${tradeNo}`);
+            const scheme = `alipays://platformapi/startapp?saId=10000007&url=${alipayUrl}`;
+
+            console.log('Launching Alipay with scheme:', scheme);
+
+            // 尝试拉起支付宝
+            window.location.href = scheme;
+
+            // 如果是在微信中，提示用户在浏览器打开
+            if (isWeChat()) {
+                setTimeout(function() {
+                    alert('检测到您在微信中打开，请点击右上角选择"在浏览器中打开"以使用此功能');
+                }, 500);
+            }
+        }
+
+        // 检测是否在微信中
+        function isWeChat() {
+            const ua = navigator.userAgent.toLowerCase();
+            return ua.indexOf('micromessenger') !== -1;
+        }
+
+        // 页面加载时检测设备类型，仅在移动端显示按钮
+        (function() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const launchBtn = document.getElementById('alipayLaunchBtn');
+            
+            if (launchBtn) {
+                if (!isMobile) {
+                    // PC端隐藏按钮
+                    launchBtn.parentElement.style.display = 'none';
+                } else {
+                    // 移动端显示按钮
+                    launchBtn.parentElement.style.display = 'block';
+                }
+            }
+        })();
+    </script>
+</body>
+</html>
+

@@ -151,6 +151,7 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 			"pid":            order.PID,
 		},
 		"qr_code_data": dataURI,
+		"qr_code_id":   h.cfg.Payment.BusinessQRMode.QRCodeID, // 支付宝收款码ID
 		"instructions": gin.H{
 			"step1": "打开支付宝，点击「扫一扫」",
 			"step2": fmt.Sprintf("扫描下方二维码，输入金额 %.2f 元", amount),

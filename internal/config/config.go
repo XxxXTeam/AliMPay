@@ -67,6 +67,7 @@ type PaymentConfig struct {
 type BusinessQRMode struct {
 	Enabled        bool    `yaml:"enabled"`
 	QRCodePath     string  `yaml:"qr_code_path"`
+	QRCodeID       string  `yaml:"qr_code_id"` // 支付宝收款码ID，用于手机端拉起支付宝
 	AmountOffset   float64 `yaml:"amount_offset"`
 	MatchTolerance int     `yaml:"match_tolerance"`
 	PaymentTimeout int     `yaml:"payment_timeout"`

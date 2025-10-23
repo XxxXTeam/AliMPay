@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>支付中心</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 420px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px 25px;
+        }
+
+        .amount-section {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 15px;
+            color: white;
+        }
+
+        .amount-label {
+            font-size: 14px;
+            opacity: 0.95;
+            margin-bottom: 8px;
+        }
+
+        .amount-value {
+            font-size: 48px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .order-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #6c757d;
+            font-size: 14px;
+        }
+
+        .info-value {
+            color: #212529;
+            font-size: 14px;
+            font-weight: 500;
+            max-width: 60%;
+            text-align: right;
+            word-break: break-all;
+        }
+
+        .qr-section {
+            text-align: center;
+            margin: 25px 0;
+        }
+
+        .qr-wrapper {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .qr-wrapper img {
+            width: 220px;
+            height: 220px;
+            display: block;
+            border-radius: 8px;
+        }
+
+        .qr-hint {
+            color: #6c757d;
+            font-size: 13px;
+            margin-top: 15px;
+        }
+
+        .countdown {
+            text-align: center;
+            padding: 15px;
+            background: #fff3cd;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .countdown-text {
+            color: #856404;
+            font-size: 14px;
+        }
+
+        .countdown-time {
+            color: #d63031;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .btn-group {
+            margin-top: 25px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 12px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #f8f9fa;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .pulse {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            color: #6c757d;
+            font-size: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .amount-value {
+                font-size: 36px;
+            }
+            
+            .qr-wrapper img {
+                width: 180px;
+                height: 180px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💳 支付中心</h1>
+            <p>安全快捷的支付体验</p>
+        </div>
+
+        <div class="content">
+            <!-- 金额显示 -->
+            <div class="amount-section">
+                <div class="amount-label">支付金额</div>
+                <div class="amount-value">¥{{printf "%.2f" .PaymentAmount}}</div>
+            </div>
+
+            <!-- 倒计时 -->
+            <div class="countdown" id="countdown">
+                <div class="countdown-text">支付剩余时间</div>
+                <div class="countdown-time" id="countdownTime">05:00</div>
+            </div>
+
+            <!-- 订单信息 -->
+            <div class="order-info">
+                <div class="info-row">
+                    <span class="info-label">商品名称</span>
+                    <span class="info-value">{{.Name}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">订单号</span>
+                    <span class="info-value">{{.OutTradeNo}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">支付状态</span>
+                    <span class="status-badge status-pending" id="statusBadge">待支付</span>
+                </div>
+            </div>
+
+            <!-- 二维码 -->
+            <div class="qr-section">
+                <div class="qr-wrapper pulse" id="qrWrapper">
+                    {{if .QrCode}}
+                    <img src="data:image/png;base64,{{.QrCode}}" alt="支付二维码">
+                    {{else if .QrCodeURL}}
+                    <img src="{{.QrCodeURL}}" alt="支付二维码">
+                    {{end}}
+                </div>
+                <div class="qr-hint">使用支付宝扫码完成支付</div>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="openAlipay()">
+                    📱 打开支付宝
+                </button>
+            </div>
+        </div>
+
+        <div class="footer">
+            由码支付提供技术支持
+        </div>
+    </div>
+
+    <script>
+        // 订单信息
+        const orderInfo = {
+            pid: '{{.PID}}',
+            tradeNo: '{{.TradeNo}}',
+            outTradeNo: '{{.OutTradeNo}}',
+            paymentUrl: '{{.PaymentURL}}',
+            createTime: '{{.CreateTime}}'  // 订单创建时间
+        };
+
+        // 计算倒计时（基于订单创建时间）
+        const countdownElement = document.getElementById('countdownTime');
+        const qrWrapper = document.getElementById('qrWrapper');
+        const statusBadge = document.getElementById('statusBadge');
+
+        function calculateTimeLeft() {
+            if (!orderInfo.createTime) {
+                return 300; // 默认5分钟
+            }
+
+            // 解析订单创建时间
+            const createTime = new Date(orderInfo.createTime.replace(' ', 'T'));
+            const now = new Date();
+            const elapsed = Math.floor((now - createTime) / 1000); // 已过去的秒数
+            const timeLeft = 300 - elapsed; // 5分钟 = 300秒
+
+            return Math.max(0, timeLeft);
+        }
+
+        let timeLeft = calculateTimeLeft();
+
+        function updateCountdown() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            countdownElement.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            
+            if (timeLeft <= 0) {
+                countdownElement.textContent = '已过期';
+                countdownElement.style.color = '#dc3545';
+                qrWrapper.classList.remove('pulse');
+            }
+            
+            if (timeLeft > 0) {
+                timeLeft--;
+            }
+        }
+
+        // 立即执行一次
+        updateCountdown();
+        // 然后每秒更新
+        setInterval(updateCountdown, 1000);
+
+        // 自动查询支付状态
+        function checkPaymentStatus() {
+            fetch(`/api/order?pid=${orderInfo.pid}&out_trade_no=${orderInfo.outTradeNo}`)
+                .then(res => res.json())
+                .then(data => {
+                    console.log('支付状态查询:', data); // 调试日志
+                    
+                    if (data.code === 1) {
+                        // status: 0=待支付, 1=已支付
+                        if (data.status === 1) {
+                            // 支付成功
+                            statusBadge.textContent = '✓ 支付成功';
+                            statusBadge.className = 'status-badge status-success';
+                            qrWrapper.classList.remove('pulse');
+                            countdownElement.textContent = '已完成';
+                            countdownElement.style.color = '#52c41a';
+                            
+                            // 停止查询
+                            clearInterval(statusCheckInterval);
+                            setTimeout(function() {
+                                {{if .ReturnURL}}
+                                window.location.href = '{{.ReturnURL}}';
+                                {{else}}
+                                alert('支付成功！');
+                                {{end}}
+                            }, 2000);
+                        } else if (data.status === 0) {
+                            // 仍在待支付
+                            console.log('订单待支付');
+                        }
+                    }
+                })
+                .catch(err => console.error('查询失败:', err));
+        }
+
+        // 立即查询一次，然后每3秒查询一次
+        checkPaymentStatus();
+        const statusCheckInterval = setInterval(checkPaymentStatus, 3000);
+
+        // 打开支付宝
+        function openAlipay() {
+            if (orderInfo.paymentUrl) {
+                window.location.href = orderInfo.paymentUrl;
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -67,6 +67,10 @@ payment:
   business_qr_mode:
     enabled: true
     qr_code_path: "./qrcode/business_qr.png"
+    # 支付宝收款码ID，用于手机端直接拉起支付宝APP
+    # 从支付宝收款码链接中获取，例如 https://qr.alipay.com/fkx123456 中的 fkx123456
+    # 留空则不显示"拉起支付宝"按钮
+    qr_code_id: ""
     amount_offset: 0.01
     match_tolerance: 300
     payment_timeout: 300

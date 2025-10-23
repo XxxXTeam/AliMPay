@@ -4,6 +4,7 @@
     --success-color: #52c41a;
     --warning-color: #faad14;
     --error-color: #ff4d4f;
+    --alipay-blue: #00A0E9;
     --text-primary: #000000d9;
     --text-secondary: #00000073;
     --text-disabled: #00000040;
@@ -391,6 +392,54 @@ body {
     .btn-group {
         flex-direction: column;
     }
+}
+
+/* Mobile Alipay Launch Button */
+.mobile-pay-section {
+    margin: 20px 0;
+    text-align: center;
+    display: none; /* 默认隐藏，通过JavaScript根据设备显示 */
+}
+
+.alipay-launch-btn {
+    width: 100%;
+    max-width: 320px;
+    padding: 14px 24px;
+    background: linear-gradient(135deg, #00A0E9 0%, #0088CC 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 160, 233, 0.3);
+}
+
+.alipay-launch-btn:hover {
+    background: linear-gradient(135deg, #0088CC 0%, #0076B3 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 160, 233, 0.4);
+}
+
+.alipay-launch-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(0, 160, 233, 0.3);
+}
+
+.alipay-icon {
+    flex-shrink: 0;
+}
+
+.mobile-pay-tip {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
 }
 
 /* Dark mode support */
