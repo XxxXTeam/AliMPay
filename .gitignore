@@ -20,6 +20,7 @@ coverage.*
 go.work
 go.work.sum
 
+
 # Dependency directories
 vendor/
 
@@ -73,6 +74,9 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+*.jpg
+*.png
+*.jpeg
 
 # Test artifacts
 /tmp/*

@@ -11,8 +11,8 @@ import time
 from urllib.parse import urlencode, quote
 
 # 配置（从 test_example.sh 中读取的配置）
-PID = "1001003549245339"
-KEY = "cd5dcdcbef4da67b9f3a01b1e391ab86"
+PID = "1001001276912812"
+KEY = "f872e1c662d41cf218b5dfa8328ae455"
 BASE_URL = "http://localhost:8080/submit"
 
 def generate_sign(params, key):

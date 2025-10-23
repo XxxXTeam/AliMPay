@@ -122,55 +122,172 @@
             alert('如需帮助，请联系商户客服\n\n订单号：{{.order.trade_no}}');
         }
 
-        // 拉起支付宝APP
+        /**
+         * 设备检测工具类
+         * @description 检测用户设备类型和浏览器环境
+         */
+        const DeviceDetector = {
+            /** 检测是否为移动设备 */
+            isMobile: function() {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            },
+            
+            /** 检测是否在微信中 */
+            isWeChat: function() {
+                return /micromessenger/i.test(navigator.userAgent);
+            },
+            
+            /** 检测是否在支付宝中 */
+            isAlipay: function() {
+                return /AlipayClient/i.test(navigator.userAgent);
+            },
+            
+            /** 获取设备类型描述 */
+            getDeviceType: function() {
+                if (this.isMobile()) {
+                    return this.isWeChat() ? 'WeChat' : 
+                           this.isAlipay() ? 'Alipay' : 'Mobile';
+                }
+                return 'Desktop';
+            }
+        };
+
+        /**
+         * 拉起支付宝APP
+         * @description 在移动端调用支付宝URL Scheme拉起APP
+         */
         function launchAlipay() {
+            // 检查是否为移动设备
+            if (!DeviceDetector.isMobile()) {
+                showToast('请使用手机扫描二维码支付', 'warning');
+                return;
+            }
+
             const qrCodeId = document.querySelector('[data-qrcode-id]').getAttribute('data-qrcode-id');
             const amount = document.querySelector('[data-amount]').getAttribute('data-amount');
             const tradeNo = document.querySelector('[data-trade-no]').getAttribute('data-trade-no');
 
             if (!qrCodeId) {
-                alert('系统配置错误：缺少收款码ID');
+                showToast('系统配置错误：缺少收款码ID', 'error');
+                return;
+            }
+
+            // 微信内提示
+            if (DeviceDetector.isWeChat()) {
+                showToast('请点击右上角，选择"在浏览器中打开"', 'info', 3000);
                 return;
             }
 
             // 构建支付宝URL Scheme
-            // alipays://platformapi/startapp?saId=10000007&url=https://qr.alipay.com/{qrCodeId}?amount={amount}&remark={remark}
             const alipayUrl = encodeURIComponent(`https://qr.alipay.com/${qrCodeId}?amount=${amount}&remark=${tradeNo}`);
             const scheme = `alipays://platformapi/startapp?saId=10000007&url=${alipayUrl}`;
 
-            console.log('Launching Alipay with scheme:', scheme);
+            console.log('[Alipay] Launching with scheme:', scheme);
+            showToast('正在打开支付宝...', 'success');
 
             // 尝试拉起支付宝
             window.location.href = scheme;
-
-            // 如果是在微信中，提示用户在浏览器打开
-            if (isWeChat()) {
-                setTimeout(function() {
-                    alert('检测到您在微信中打开，请点击右上角选择"在浏览器中打开"以使用此功能');
-                }, 500);
-            }
         }
 
-        // 检测是否在微信中
-        function isWeChat() {
-            const ua = navigator.userAgent.toLowerCase();
-            return ua.indexOf('micromessenger') !== -1;
+        /**
+         * 显示提示信息
+         * @param {string} message - 提示内容
+         * @param {string} type - 类型: success/error/warning/info
+         * @param {number} duration - 显示时长(ms)
+         */
+        function showToast(message, type = 'info', duration = 2000) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 12px 24px;
+                border-radius: 8px;
+                color: white;
+                font-size: 14px;
+                z-index: 10000;
+                animation: slideDown 0.3s ease;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            `;
+
+            // 根据类型设置背景色
+            const colors = {
+                success: '#52c41a',
+                error: '#ff4d4f',
+                warning: '#faad14',
+                info: '#1677ff'
+            };
+            toast.style.backgroundColor = colors[type] || colors.info;
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideUp 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
         }
 
-        // 页面加载时检测设备类型，仅在移动端显示按钮
-        (function() {
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        /**
+         * 初始化页面
+         * @description 页面加载时执行的初始化逻辑
+         */
+        (function initPage() {
+            const deviceType = DeviceDetector.getDeviceType();
             const launchBtn = document.getElementById('alipayLaunchBtn');
             
+            console.log('[Device] Type:', deviceType);
+
             if (launchBtn) {
-                if (!isMobile) {
-                    // PC端隐藏按钮
-                    launchBtn.parentElement.style.display = 'none';
-                } else {
+                if (DeviceDetector.isMobile()) {
                     // 移动端显示按钮
                     launchBtn.parentElement.style.display = 'block';
+                    
+                    // 微信中修改按钮文字
+                    if (DeviceDetector.isWeChat()) {
+                        launchBtn.innerHTML = `
+                            <svg class="alipay-icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
+                                <path d="M1024 701.9v202.8c0 66.6-53.9 120.4-120.4 120.4H120.4C53.9 1025.1 0 971.3 0 904.7V120.4C0 53.9 53.9 0 120.4 0h783.1c66.6 0 120.4 53.9 120.4 120.4V701.9z" fill="#00A0E9"/>
+                                <path d="M928.9 735.7c-99.7-47.4-244.8-110.9-325.6-146.5 21.9-36.3 39.3-75.8 51.6-117.6H546v-64.3h199.4v-38.7H546v-96.8h-38.7c0 0 0 0 0 0H444.2v96.8H244.8v38.7h199.4v64.3H335.3c-32.3 116.5-103.9 217.4-203.5 289.2 51.6 39.3 122.5 72.6 171.1 90.6 90.6-77.4 154.8-184.5 184.5-315.5h258.1c-19.4 64.3-45.2 125.8-77.4 181.3 38.7 16.1 141.9 58.1 225.8 96.8V735.7z" fill="#FFFFFF"/>
+                            </svg>
+                            <span>在浏览器中打开</span>
+                        `;
+                    }
+                } else {
+                    // PC端显示提示信息
+                    launchBtn.parentElement.innerHTML = `
+                        <div class="pc-scan-tip">
+                            <div style="font-size: 16px; margin-bottom: 8px;">💻 电脑端访问</div>
+                            <div style="font-size: 14px; color: #00000073;">
+                                请使用手机扫描上方二维码完成支付
+                            </div>
+                        </div>
+                    `;
                 }
             }
+
+            // 添加动画样式
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideDown {
+                    from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+                    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+                }
+                @keyframes slideUp {
+                    from { transform: translateX(-50%) translateY(0); opacity: 1; }
+                    to { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+                }
+                .pc-scan-tip {
+                    text-align: center;
+                    padding: 20px;
+                    background: #f5f5f5;
+                    border-radius: 12px;
+                    color: #000000d9;
+                }
+            `;
+            document.head.appendChild(style);
         })();
     </script>
 </body>
