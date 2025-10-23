@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -220,9 +221,31 @@ func main() {
 	router.POST("/admin", adminHandler.HandleAdmin)
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+	
+	// 创建路径规范化的HTTP handler包装器
+	// 这个包装器在HTTP层面处理，早于Gin的路由匹配
+	pathNormalizingHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		// 规范化路径：去除多余斜杠
+		normalizedPath := path
+		for strings.Contains(normalizedPath, "//") {
+			normalizedPath = strings.ReplaceAll(normalizedPath, "//", "/")
+		}
+		// 去除末尾斜杠（保留根路径"/"）
+		if len(normalizedPath) > 1 && strings.HasSuffix(normalizedPath, "/") {
+			normalizedPath = strings.TrimSuffix(normalizedPath, "/")
+		}
+		
+		// 更新请求路径
+		r.URL.Path = normalizedPath
+		
+		// 传递给Gin处理
+		router.ServeHTTP(w, r)
+	})
+	
 	server := &http.Server{
 		Addr:         addr,
-		Handler:      router,
+		Handler:      pathNormalizingHandler, // 使用包装后的handler
 		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
 		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
 	}
