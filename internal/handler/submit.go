@@ -76,7 +76,8 @@ func (h *SubmitHandler) renderPaymentPage(c *gin.Context, result map[string]inte
 		"PaymentURL":    getString(result, "payment_url"),
 		"QrCode":        getString(result, "qr_code"),
 		"QrCodeURL":     getString(result, "qr_code_url"),
-		"CreateTime":    getString(result, "create_time"), // 订单创建时间
+		"QRCodeID":      h.cfg.Payment.BusinessQRMode.QRCodeID, // 支付宝收款码ID（用于拉起APP）
+		"CreateTime":    getString(result, "create_time"),      // 订单创建时间
 
 		// 模式和提示
 		"BusinessQrMode": getBool(result, "business_qr_mode"),

@@ -125,55 +125,118 @@
         <div data-trade-no="{{.order.trade_no}}"></div>
     </div>
 
-    <script src="/static/js/browser-detect.js?v=2025102301"></script>
-    <script src="/static/js/payment-ws.js?v=2025102301"></script>
-    <!-- payment.js已移除，改用payment-ws.js实现WebSocket实时推送 -->
+    <!-- ============================================ -->
+    <!-- 所有功能完全内联，不依赖任何外部JS文件 -->
+    <!-- ============================================ -->
     <script>
-        // 移除页面加载动画
-        window.addEventListener('DOMContentLoaded', function() {
-            const pageLoader = document.getElementById('pageLoader');
-            if (pageLoader) {
-                setTimeout(() => {
-                    pageLoader.classList.add('fade-out');
-                    setTimeout(() => pageLoader.remove(), 300);
-                }, 500);
-            }
-        });
+        (function() {
+            'use strict';
 
-        function contactSupport() {
-            alert('如需帮助，请联系商户客服\n\n订单号：{{.order.trade_no}}');
-        }
-
-        /**
-         * 设备检测工具类（向后兼容）
-         * @description 使用BrowserDetector提供向后兼容的API
-         * @deprecated 请直接使用BrowserDetector
-         */
-        const DeviceDetector = {
-            /** 检测是否为移动设备 */
-            isMobile: function() {
-                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            },
-            
-            /** 检测是否在微信中 */
-            isWeChat: function() {
-                return /micromessenger/i.test(navigator.userAgent);
-            },
-            
-            /** 检测是否在支付宝中 */
-            isAlipay: function() {
-                return /AlipayClient/i.test(navigator.userAgent);
-            },
-            
-            /** 获取设备类型描述 */
-            getDeviceType: function() {
-                if (this.isMobile()) {
-                    return this.isWeChat() ? 'WeChat' : 
-                           this.isAlipay() ? 'Alipay' : 'Mobile';
+            // ========================================
+            // 1. 增强的设备检测器（完全内联，多重判断）
+            // ========================================
+            const DeviceDetector = {
+                getUserAgent() {
+                    return navigator.userAgent || '';
+                },
+                
+                // 基于UA的移动设备检测（增强版）
+                isMobileUA() {
+                    const ua = this.getUserAgent();
+                    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|Tablet|tablet/i.test(ua);
+                },
+                
+                // 基于屏幕尺寸判断
+                isMobileScreen() {
+                    return window.innerWidth <= 768 || window.screen.width <= 768;
+                },
+                
+                // 触摸屏检测
+                isTouchScreen() {
+                    return ('ontouchstart' in window) || 
+                           (navigator.maxTouchPoints > 0) || 
+                           (navigator.msMaxTouchPoints > 0);
+                },
+                
+                // 综合判断是否为移动设备（多重条件）
+                isMobile() {
+                    // 只要满足任意一个条件就认为是移动设备
+                    const isUA = this.isMobileUA();
+                    const isScreen = this.isMobileScreen();
+                    const isTouch = this.isTouchScreen();
+                    
+                    console.log('[DeviceDetector] UA检测:', isUA);
+                    console.log('[DeviceDetector] 屏幕检测:', isScreen);
+                    console.log('[DeviceDetector] 触摸检测:', isTouch);
+                    
+                    // 只要有一个条件满足就认为是移动设备
+                    return isUA || (isScreen && isTouch);
+                },
+                
+                isWeChat() {
+                    return /MicroMessenger/i.test(this.getUserAgent());
+                },
+                
+                isAlipay() {
+                    return /AlipayClient/i.test(this.getUserAgent());
+                },
+                
+                getDeviceType() {
+                    if (this.isWeChat()) return 'wechat';
+                    if (this.isAlipay()) return 'alipay';
+                    if (this.isMobile()) return 'mobile';
+                    return 'desktop';
                 }
-                return 'Desktop';
-            }
-        };
+            };
+
+            // 暴露到全局作用域
+            window.DeviceDetector = DeviceDetector;
+
+            console.log('[AliMPay] Device Type:', DeviceDetector.getDeviceType());
+            console.log('[AliMPay] User Agent:', DeviceDetector.getUserAgent().substring(0, 50) + '...');
+
+            // ========================================
+            // 2. Toast提示（完全内联）
+            // ========================================
+            window.showToast = function(message, type = 'info', duration = 2000) {
+                const toast = document.createElement('div');
+                toast.textContent = message;
+                toast.style.cssText = `
+                    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                    padding: 12px 24px; border-radius: 8px; color: white; font-size: 14px;
+                    z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    animation: slideDown 0.3s ease;
+                `;
+                
+                const colors = { success: '#52c41a', error: '#ff4d4f', warning: '#faad14', info: '#1890ff' };
+                toast.style.background = colors[type] || colors.info;
+                
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.animation = 'slideUp 0.3s ease';
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            };
+
+            // ========================================
+            // 3. 辅助功能
+            // ========================================
+            window.contactSupport = function() {
+                alert('如需帮助，请联系商户客服\n\n订单号：{{.order.trade_no}}');
+            };
+
+            // 移除页面加载动画
+            window.addEventListener('DOMContentLoaded', function() {
+                const pageLoader = document.getElementById('pageLoader');
+                if (pageLoader) {
+                    setTimeout(() => {
+                        pageLoader.classList.add('fade-out');
+                        setTimeout(() => pageLoader.remove(), 300);
+                    }, 500);
+                }
+            });
+
+        })(); // 立即执行，确保所有功能可用
 
         /**
          * 拉起支付宝APP
@@ -201,84 +264,46 @@
                 return;
             }
 
-            // 构建支付宝URL Scheme
-            // 方式1: 直接扫码（推荐，最可靠）
-            const qrCodeUrl = `https://qr.alipay.com/${qrCodeId}`;
-         //   const scheme1 = `alipays://platformapi/startapp?appId=20000123&actionType=scan&barcodeType=qrcode&qrcode=${encodeURIComponent(qrCodeUrl)}`;
+            // 构建支付宝URL Scheme（使用正确的格式）
+            // 完整的支付宝二维码URL，包含金额和备注
+            const fullQrCodeUrl = `https://qr.alipay.com/${qrCodeId}?amount=${amount}&remark=${tradeNo}`;
             
-            // 方式2: 转账到码商（备用）
-            const scheme = `alipays://platformapi/startapp?saId=10000007&url=${encodeURIComponent(qrCodeUrl)}`;
-            
-            // 方式3: 直接打开支付宝扫一扫
-            const scheme2 = 'alipays://platformapi/startapp?appId=10000007';
+            // 支付宝URL Scheme - 使用saId=10000007打开转账页面
+            const scheme = `alipays://platformapi/startapp?saId=10000007&qrcode=${encodeURIComponent(fullQrCodeUrl)}`;
 
             console.log('[Alipay] QR Code ID:', qrCodeId);
             console.log('[Alipay] Amount:', amount);
-            console.log('[Alipay] Launching with scheme method 1:', scheme1);
+            console.log('[Alipay] Trade No:', tradeNo);
+            console.log('[Alipay] Scheme URL:', scheme);
+            
             showToast('正在打开支付宝...', 'success');
 
-            // 尝试拉起支付宝（使用最可靠的方式）
-            window.location.href = scheme1;
+            // 尝试拉起支付宝
+            window.location.href = scheme;
             
-            // 备用方案：如果3秒后还在页面，尝试其他方式
+            // 备用方案：如果3秒后还在页面，说明拉起失败，提示用户
             setTimeout(() => {
                 if (document.hasFocus()) {
-                    console.log('[Alipay] Trying alternative scheme...');
-                    window.location.href = scheme3; // 打开扫一扫
+                    console.log('[Alipay] Launch may have failed, showing fallback message');
+                    showToast('如未打开支付宝，请手动打开APP扫码', 'warning', 3000);
                 }
-            }, 3000);
+            }, 2000);
         }
 
-        /**
-         * 显示提示信息
-         * @param {string} message - 提示内容
-         * @param {string} type - 类型: success/error/warning/info
-         * @param {number} duration - 显示时长(ms)
-         */
-        function showToast(message, type = 'info', duration = 2000) {
-            const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
-            toast.textContent = message;
-            toast.style.cssText = `
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                padding: 12px 24px;
-                border-radius: 8px;
-                color: white;
-                font-size: 14px;
-                z-index: 10000;
-                animation: slideDown 0.3s ease;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            `;
-
-            // 根据类型设置背景色
-            const colors = {
-                success: '#52c41a',
-                error: '#ff4d4f',
-                warning: '#faad14',
-                info: '#1677ff'
-            };
-            toast.style.backgroundColor = colors[type] || colors.info;
-
-            document.body.appendChild(toast);
-
-            setTimeout(() => {
-                toast.style.animation = 'slideUp 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
-        }
+        // showToast已在上方全局定义，这里删除重复定义
 
         /**
          * 初始化页面
-         * @description 页面加载时执行的初始化逻辑
+         * @description 页面加载时执行的初始化逻辑（DeviceDetector已内联，立即可用）
          */
-        (function initPage() {
+        function initPage() {
             const deviceType = DeviceDetector.getDeviceType();
             const launchBtn = document.getElementById('alipayLaunchBtn');
             
+            console.log('[Page] Initializing...');
             console.log('[Device] Type:', deviceType);
+            console.log('[Device] isMobile:', DeviceDetector.isMobile());
+            console.log('[Device] isWeChat:', DeviceDetector.isWeChat());
 
             if (launchBtn) {
                 if (DeviceDetector.isMobile()) {
@@ -328,7 +353,60 @@
                 }
             `;
             document.head.appendChild(style);
-        })();
+
+            // ========================================
+            // 4. WebSocket实时订单状态监听（完全内联）
+            // ========================================
+            const tradeNo = document.querySelector('[data-trade-no]').getAttribute('data-trade-no');
+            if (tradeNo) {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsURL = `${protocol}//${window.location.host}/ws/order?order_id=${tradeNo}`;
+                
+                console.log('[WebSocket] Connecting to:', wsURL);
+                
+                try {
+                    const ws = new WebSocket(wsURL);
+                    
+                    ws.onopen = function() {
+                        console.log('[WebSocket] Connected');
+                    };
+                    
+                    ws.onmessage = function(event) {
+                        try {
+                            const data = JSON.parse(event.data);
+                            console.log('[WebSocket] Message:', data);
+                            
+                            if (data.type === 'status_update' && data.status === 1) {
+                                // 订单已支付
+                                showToast('支付成功！正在跳转...', 'success');
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, 1500);
+                            }
+                        } catch (e) {
+                            console.error('[WebSocket] Parse error:', e);
+                        }
+                    };
+                    
+                    ws.onerror = function(error) {
+                        console.error('[WebSocket] Error:', error);
+                    };
+                    
+                    ws.onclose = function() {
+                        console.log('[WebSocket] Disconnected');
+                    };
+                } catch (e) {
+                    console.error('[WebSocket] Connection failed:', e);
+                }
+            }
+        }
+
+        // 确保DOM和脚本都加载完成后再初始化
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPage);
+        } else {
+            initPage();
+        }
     </script>
 </body>
 </html>

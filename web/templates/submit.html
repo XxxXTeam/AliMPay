@@ -299,13 +299,65 @@
     </div>
 
     <script>
+        // ========================================
+        // 1. 增强的设备检测器（完全内联，多重判断）
+        // ========================================
+        const DeviceDetector = {
+            getUserAgent() {
+                return navigator.userAgent || '';
+            },
+            
+            // 基于UA的移动设备检测（增强版）
+            isMobileUA() {
+                const ua = this.getUserAgent();
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|Tablet|tablet/i.test(ua);
+            },
+            
+            // 基于屏幕尺寸判断
+            isMobileScreen() {
+                return window.innerWidth <= 768 || window.screen.width <= 768;
+            },
+            
+            // 触摸屏检测
+            isTouchScreen() {
+                return ('ontouchstart' in window) || 
+                       (navigator.maxTouchPoints > 0) || 
+                       (navigator.msMaxTouchPoints > 0);
+            },
+            
+            // 综合判断是否为移动设备（多重条件）
+            isMobile() {
+                const isUA = this.isMobileUA();
+                const isScreen = this.isMobileScreen();
+                const isTouch = this.isTouchScreen();
+                
+                console.log('[DeviceDetector] UA:', isUA, 'Screen:', isScreen, 'Touch:', isTouch);
+                
+                // 只要有一个条件满足就认为是移动设备
+                return isUA || (isScreen && isTouch);
+            },
+            
+            isWeChat() {
+                return /MicroMessenger/i.test(this.getUserAgent());
+            },
+            
+            isAlipay() {
+                return /AlipayClient/i.test(this.getUserAgent());
+            }
+        };
+
+        console.log('[AliMPay] Device Type:', DeviceDetector.isMobile() ? 'Mobile' : 'Desktop');
+        console.log('[AliMPay] Screen:', window.innerWidth, 'x', window.innerHeight);
+
         // 订单信息
         const orderInfo = {
             pid: '{{.PID}}',
             tradeNo: '{{.TradeNo}}',
             outTradeNo: '{{.OutTradeNo}}',
             paymentUrl: '{{.PaymentURL}}',
-            createTime: '{{.CreateTime}}'  // 订单创建时间
+            createTime: '{{.CreateTime}}',  // 订单创建时间
+            qrCodeId: '{{.QRCodeID}}',      // 支付宝收款码ID
+            amount: {{.PaymentAmount}}       // 支付金额
         };
 
         // 计算倒计时（基于订单创建时间）
@@ -389,10 +441,69 @@
         checkPaymentStatus();
         const statusCheckInterval = setInterval(checkPaymentStatus, 3000);
 
-        // 打开支付宝
+        // ========================================
+        // 2. Toast提示功能（完全内联）
+        // ========================================
+        function showToast(message, type = 'info') {
+            const colors = { success: '#52c41a', error: '#ff4d4f', warning: '#faad14', info: '#1890ff' };
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                padding: 12px 24px; border-radius: 8px; color: white; font-size: 14px;
+                z-index: 10000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                background: ${colors[type] || colors.info};
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        // ========================================
+        // 3. 打开支付宝（完全内联，支持多种方式，容错机制）
+        // ========================================
         function openAlipay() {
-            if (orderInfo.paymentUrl) {
+            console.log('[OpenAlipay] Called');
+            console.log('[OpenAlipay] OrderInfo:', orderInfo);
+
+            // 微信内提示（优先级最高）
+            if (DeviceDetector.isWeChat()) {
+                showToast('请点击右上角，选择"在浏览器中打开"', 'info');
+                return;
+            }
+
+            // 如果检测为桌面设备，给出提示但仍然允许尝试（容错机制）
+            if (!DeviceDetector.isMobile()) {
+                console.log('[OpenAlipay] Desktop detected, but will try anyway');
+                showToast('提示：您可能在使用电脑，正在尝试打开支付宝...', 'warning');
+                // 不return，继续执行拉起逻辑
+            }
+
+            // 方式1：如果有qrCodeId，构建支付宝URL Scheme
+            if (orderInfo.qrCodeId && orderInfo.amount) {
+                const fullQrCodeUrl = `https://qr.alipay.com/${orderInfo.qrCodeId}?amount=${orderInfo.amount}&remark=${orderInfo.tradeNo}`;
+                const scheme = `alipays://platformapi/startapp?saId=10000007&qrcode=${encodeURIComponent(fullQrCodeUrl)}`;
+                
+                console.log('[OpenAlipay] Using QR Code scheme:', scheme);
+                showToast('正在打开支付宝...', 'success');
+                window.location.href = scheme;
+                
+                // 备用提示
+                setTimeout(() => {
+                    if (document.hasFocus()) {
+                        showToast('如未打开支付宝，请手动扫码', 'warning');
+                    }
+                }, 2000);
+            }
+            // 方式2：如果有paymentUrl，直接跳转
+            else if (orderInfo.paymentUrl) {
+                console.log('[OpenAlipay] Using payment URL:', orderInfo.paymentUrl);
+                showToast('正在打开支付宝...', 'success');
                 window.location.href = orderInfo.paymentUrl;
+            }
+            // 方式3：没有任何URL，提示扫码
+            else {
+                console.log('[OpenAlipay] No URL available');
+                showToast('请使用支付宝扫描二维码完成支付', 'info');
             }
         }
     </script>
