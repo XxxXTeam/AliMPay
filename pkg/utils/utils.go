@@ -44,9 +44,22 @@ func MD5(data string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// GenerateSign 生成签名
+/*
+ * GenerateSign 生成签名（兼容易支付标准）
+ * @description 按照易支付/码支付标准生成MD5签名
+ * @param params map[string]string 参数Map
+ * @param key string 商户密钥
+ * @return string 32位小写MD5签名
+ *
+ * 签名算法：
+ * 1. 过滤空值参数和 sign、sign_type
+ * 2. 按参数名ASCII码升序排序
+ * 3. 使用URL键值对格式拼接成字符串（key1=value1&key2=value2）
+ * 4. 在字符串末尾拼接商户密钥
+ * 5. MD5加密并转小写
+ */
 func GenerateSign(params map[string]string, key string) string {
-	// 移除空值
+	// 1. 移除空值和签名相关参数
 	filtered := make(map[string]string)
 	for k, v := range params {
 		if v != "" && k != "sign" && k != "sign_type" {
@@ -54,32 +67,101 @@ func GenerateSign(params map[string]string, key string) string {
 		}
 	}
 
-	// 按键名排序
+	// 2. 按键名ASCII码排序
 	keys := make([]string, 0, len(filtered))
 	for k := range filtered {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 
-	// 构建签名字符串
+	// 3. 构建签名字符串 key1=value1&key2=value2
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, filtered[k]))
+	}
+
+	// 4. 拼接商户密钥
+	signStr := strings.Join(parts, "&")
+	signStrWithKey := signStr + key
+
+	// 5. MD5加密（小写）
+	return strings.ToLower(MD5(signStrWithKey))
+}
+
+/*
+ * VerifySign 验证签名（兼容易支付标准）
+ * @description 验证请求签名是否正确，支持大小写不敏感比对
+ * @param params map[string]string 请求参数Map
+ * @param key string 商户密钥
+ * @return bool 签名是否正确
+ */
+func VerifySign(params map[string]string, key string) bool {
+	receivedSign := params["sign"]
+	if receivedSign == "" {
+		return false
+	}
+
+	// 生成期望的签名
+	expectedSign := GenerateSign(params, key)
+
+	// 大小写不敏感比对（易支付兼容性）
+	return strings.ToLower(receivedSign) == strings.ToLower(expectedSign)
+}
+
+/*
+ * VerifySignDebug 验证签名（调试版本）
+ * @description 验证签名并返回详细的调试信息
+ * @param params map[string]string 请求参数Map
+ * @param key string 商户密钥
+ * @return bool 签名是否正确
+ * @return string 调试信息
+ */
+func VerifySignDebug(params map[string]string, key string) (bool, string) {
+	receivedSign := params["sign"]
+	if receivedSign == "" {
+		return false, "签名参数为空"
+	}
+
+	// 构建签名字符串用于调试
+	filtered := make(map[string]string)
+	for k, v := range params {
+		if v != "" && k != "sign" && k != "sign_type" {
+			filtered[k] = v
+		}
+	}
+
+	keys := make([]string, 0, len(filtered))
+	for k := range filtered {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
 	var parts []string
 	for _, k := range keys {
 		parts = append(parts, fmt.Sprintf("%s=%s", k, filtered[k]))
 	}
 
 	signStr := strings.Join(parts, "&")
-	return MD5(signStr + key)
-}
+	signStrWithKey := signStr + key
+	expectedSign := strings.ToLower(MD5(signStrWithKey))
 
-// VerifySign 验证签名
-func VerifySign(params map[string]string, key string) bool {
-	sign := params["sign"]
-	if sign == "" {
-		return false
-	}
+	debugInfo := fmt.Sprintf(
+		"签名验证详情:\n"+
+			"  参与签名的参数: %v\n"+
+			"  签名字符串: %s\n"+
+			"  加上密钥后: %s\n"+
+			"  计算出的签名: %s\n"+
+			"  接收到的签名: %s\n"+
+			"  验证结果: %v",
+		filtered,
+		signStr,
+		signStrWithKey,
+		expectedSign,
+		receivedSign,
+		strings.ToLower(receivedSign) == strings.ToLower(expectedSign),
+	)
 
-	expectedSign := GenerateSign(params, key)
-	return sign == expectedSign
+	return strings.ToLower(receivedSign) == strings.ToLower(expectedSign), debugInfo
 }
 
 // FormatAmount 格式化金额（保留2位小数）

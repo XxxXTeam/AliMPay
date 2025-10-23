@@ -102,10 +102,21 @@ func (s *CodePayService) CreatePayment(params map[string]string, baseURL string)
 		return nil, err
 	}
 
-	// 验证签名
-	if !utils.VerifySign(params, s.merchantKey) {
+	// 验证签名（使用调试版本获取详细信息）
+	isValid, debugInfo := utils.VerifySignDebug(params, s.merchantKey)
+	if !isValid {
+		logger.Error("Signature verification failed",
+			zap.String("pid", params["pid"]),
+			zap.String("out_trade_no", params["out_trade_no"]),
+			zap.String("money", params["money"]),
+			zap.String("debug_info", debugInfo))
 		return nil, fmt.Errorf("invalid signature")
 	}
+
+	// 签名验证成功，记录调试信息
+	logger.Debug("Signature verification passed",
+		zap.String("out_trade_no", params["out_trade_no"]),
+		zap.String("debug_info", debugInfo))
 
 	// 检查订单是否已存在（防止重复提交）
 	existingOrder, err := s.db.GetOrderByOutTradeNo(params["out_trade_no"], params["pid"])
