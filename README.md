@@ -60,7 +60,7 @@ AliMPay Golang Edition 是一个基于 Go 语言开发的高性能支付宝码�
 #### 1. 克隆代码
 
 ```bash
-git clone https://github.com/alimpay/alimpay-go.git
+git clone https://github.com/chanhanzhan/alimpay.git
 cd alimpay-go
 ```
 
@@ -478,8 +478,8 @@ git config commit.template .gitmessage
 
 ## 📧 联系方式
 
-- Issue: https://github.com/alimpay/alimpay-go/issues
-- Email: support@alimpay.com
+- Issue: https://github.com/chanhanzhan/alimpay/issues
+- Email: support@openel.top
 
 ---
 
