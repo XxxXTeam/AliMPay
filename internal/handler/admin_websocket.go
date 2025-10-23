@@ -11,13 +11,14 @@ Description: 提供管理后台实时订单推送功能
   - 自动广播机制
 
 消息格式:
-  {
-    "type": "order_created|order_paid|order_expired|stats_update",
-    "order_id": "xxx",
-    "name": "商品名称",
-    "payment_amount": 0.01,
-    "timestamp": 1234567890
-  }
+
+	{
+	  "type": "order_created|order_paid|order_expired|stats_update",
+	  "order_id": "xxx",
+	  "name": "商品名称",
+	  "payment_amount": 0.01,
+	  "timestamp": 1234567890
+	}
 */
 package handler
 
@@ -56,6 +57,7 @@ type AdminWebSocketHandler struct {
 NewAdminWebSocketHandler 创建管理后台WebSocket处理器
 参数:
   - db: 数据库实例
+
 返回:
   - *AdminWebSocketHandler: WebSocket处理器实例
 */
@@ -176,20 +178,48 @@ sendStats 发送统计信息
   - conn: WebSocket连接
 */
 func (h *AdminWebSocketHandler) sendStats(conn *websocket.Conn) {
-	// 查询所有订单（简化版，生产环境应该使用专门的统计方法）
-	// TODO: 添加 GetOrdersByStatus 方法到数据库层
-	
-	// 临时实现：使用模拟数据
+	// 查询待支付订单数
+	pendingOrders, err := h.db.GetOrdersByStatus(model.OrderStatusPending)
+	if err != nil {
+		logger.Error("Failed to get pending orders count", zap.Error(err))
+		pendingOrders = []*model.Order{} // 失败时使用空列表
+	}
+
+	// 查询今日已支付订单数
+	paidOrders, err := h.db.GetTodayOrdersByStatus(model.OrderStatusPaid)
+	if err != nil {
+		logger.Error("Failed to get paid orders count", zap.Error(err))
+		paidOrders = []*model.Order{} // 失败时使用空列表
+	}
+
+	// 计算今日总金额
+	var totalAmount float64
+	for _, order := range paidOrders {
+		totalAmount += order.PaymentAmount
+	}
+
+	// 查询今日所有订单
+	todayPending, err := h.db.GetTodayOrdersByStatus(model.OrderStatusPending)
+	if err != nil {
+		logger.Error("Failed to get today's pending orders", zap.Error(err))
+		todayPending = []*model.Order{}
+	}
+
 	message := map[string]interface{}{
 		"type":          "stats_update",
-		"pending_count": 0,
-		"paid_count":    0,
-		"total_count":   0,
-		"total_amount":  0.0,
+		"pending_count": len(pendingOrders),
+		"paid_count":    len(paidOrders),
+		"total_count":   len(todayPending) + len(paidOrders),
+		"total_amount":  totalAmount,
 		"timestamp":     time.Now().Unix(),
 	}
 
 	h.sendMessage(conn, message)
+	
+	logger.Debug("Stats sent",
+		zap.Int("pending", len(pendingOrders)),
+		zap.Int("paid", len(paidOrders)),
+		zap.Float64("amount", totalAmount))
 }
 
 /*
@@ -331,4 +361,3 @@ func (h *AdminWebSocketHandler) GetConnectionCount() int {
 	defer h.mu.RUnlock()
 	return len(h.connections)
 }
-

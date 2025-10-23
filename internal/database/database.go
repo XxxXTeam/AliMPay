@@ -349,6 +349,106 @@ func (db *DB) GetOrders(pid string, limit int) ([]*model.Order, error) {
 	return orders, nil
 }
 
+/*
+GetOrdersByStatus 根据状态获取订单列表
+@description 查询指定状态的所有订单
+@param status 订单状态
+@return []*model.Order 订单列表
+@return error 查询错误
+*/
+func (db *DB) GetOrdersByStatus(status int) ([]*model.Order, error) {
+	query := `
+		SELECT id, out_trade_no, type, pid, name, price, payment_amount,
+		       status, add_time, pay_time, notify_url, return_url, sitename
+		FROM codepay_orders
+		WHERE status = ?
+		ORDER BY add_time DESC
+	`
+
+	rows, err := db.Query(query, status)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orders by status: %w", err)
+	}
+	defer rows.Close()
+
+	var orders []*model.Order
+	for rows.Next() {
+		var order model.Order
+		var payTime sql.NullTime
+
+		err := rows.Scan(
+			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
+			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan order: %w", err)
+		}
+
+		if payTime.Valid {
+			order.PayTime = &payTime.Time
+		}
+
+		orders = append(orders, &order)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return orders, nil
+}
+
+/*
+GetTodayOrdersByStatus 获取今日指定状态的订单
+@description 查询今天创建的指定状态订单
+@param status 订单状态
+@return []*model.Order 订单列表
+@return error 查询错误
+*/
+func (db *DB) GetTodayOrdersByStatus(status int) ([]*model.Order, error) {
+	query := `
+		SELECT id, out_trade_no, type, pid, name, price, payment_amount,
+		       status, add_time, pay_time, notify_url, return_url, sitename
+		FROM codepay_orders
+		WHERE status = ? AND DATE(add_time) = DATE('now', 'localtime')
+		ORDER BY add_time DESC
+	`
+
+	rows, err := db.Query(query, status)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get today's orders by status: %w", err)
+	}
+	defer rows.Close()
+
+	var orders []*model.Order
+	for rows.Next() {
+		var order model.Order
+		var payTime sql.NullTime
+
+		err := rows.Scan(
+			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
+			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan order: %w", err)
+		}
+
+		if payTime.Valid {
+			order.PayTime = &payTime.Time
+		}
+
+		orders = append(orders, &order)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return orders, nil
+}
+
 // DeleteExpiredOrders 删除过期订单
 func (db *DB) DeleteExpiredOrders(expiredTime time.Time) (int64, error) {
 	query := `

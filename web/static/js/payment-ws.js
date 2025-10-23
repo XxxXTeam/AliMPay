@@ -1,453 +1,460 @@
-/**
- * payment-ws.js - 支付页面WebSocket增强脚本
- * Author: AliMPay Team
- * Description: 使用WebSocket实时获取订单支付状态，替代HTTP轮询
- * 
- * 功能:
- *   - WebSocket连接管理（自动重连）
- *   - 实时接收订单状态更新
- *   - 倒计时管理
- *   - 设备检测和适配
- *   - Toast提示组件
- */
-
 /*
-全局状态管理
-*/
-const PaymentState = {
-    ws: null,              // WebSocket连接
-    orderId: null,         // 订单号
-    reconnectTimer: null,  // 重连定时器
-    reconnectAttempts: 0,  // 重连尝试次数
-    maxReconnectAttempts: 5, // 最大重连次数
-    isConnected: false,    // 连接状态
-    countdownTimer: null,  // 倒计时定时器
-    timeLeft: 300         // 剩余时间(秒)
-};
+支付页面WebSocket客户端
+功能:
+  - 实时订单状态更新
+  - 自动重连机制
+  - HTTP轮询降级
+  - 倒计时管理
+  - Toast通知
 
-/*
-设备检测工具类
-功能: 检测用户设备类型和浏览器环境
+使用示例:
+  <script src="/static/js/payment-ws.js"></script>
+  页面需包含以下元素:
+    - [data-trade-no]: 订单号
+    - [data-pid]: 商户ID
+    - #statusIndicator: 状态指示器
+    - #countdownTime: 倒计时显示
 */
-const DeviceDetector = {
-    /** 检测是否为移动设备 */
-    isMobile: function() {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    },
-    
-    /** 检测是否在微信中 */
-    isWeChat: function() {
-        return /micromessenger/i.test(navigator.userAgent);
-    },
-    
-    /** 检测是否在支付宝中 */
-    isAlipay: function() {
-        return /AlipayClient/i.test(navigator.userAgent);
-    },
-    
-    /** 获取设备类型描述 */
-    getDeviceType: function() {
-        if (this.isMobile()) {
-            return this.isWeChat() ? 'WeChat' : 
-                   this.isAlipay() ? 'Alipay' : 'Mobile';
+
+(function() {
+    'use strict';
+
+    // 配置
+    const CONFIG = {
+        WS_RECONNECT_ATTEMPTS: 5,
+        WS_RECONNECT_INTERVAL: 1000,
+        WS_MAX_RECONNECT_INTERVAL: 30000,
+        HTTP_POLL_INTERVAL: 3000,
+        COUNTDOWN_TOTAL: 300, // 5分钟
+        REDIRECT_DELAY: 2000
+    };
+
+    // 状态管理
+    const state = {
+        orderId: null,
+        pid: null,
+        ws: null,
+        reconnectAttempts: 0,
+        polling: false,
+        pollTimer: null,
+        countdownTimer: null,
+        timeLeft: CONFIG.COUNTDOWN_TOTAL,
+        paid: false
+    };
+
+    // DOM元素
+    const elements = {};
+
+    /*
+    初始化应用
+    */
+    function init() {
+        console.log('[Payment WS] Initializing...');
+
+        // 获取订单信息
+        const orderEl = document.querySelector('[data-trade-no]');
+        const pidEl = document.querySelector('[data-pid]');
+        
+        if (!orderEl || !pidEl) {
+            console.error('[Payment WS] Required elements not found');
+            return;
         }
-        return 'Desktop';
-    }
-};
 
-/*
-WebSocket管理器
-功能: 管理WebSocket连接、自动重连、消息处理
-*/
-const WebSocketManager = {
-    /**
-     * 连接WebSocket
-     * @param {string} orderId - 订单号
-     */
-    connect: function(orderId) {
-        if (PaymentState.ws && PaymentState.ws.readyState === WebSocket.OPEN) {
-            console.log('[WS] Already connected');
+        state.orderId = orderEl.getAttribute('data-trade-no');
+        state.pid = pidEl.getAttribute('data-pid');
+
+        // 获取DOM元素
+        elements.statusIndicator = document.getElementById('statusIndicator');
+        elements.statusText = elements.statusIndicator?.querySelector('.status-text');
+        elements.countdownTime = document.getElementById('countdownTime');
+        elements.qrCode = document.getElementById('paymentQRCode');
+
+        console.log('[Payment WS] Order:', state.orderId, 'PID:', state.pid);
+
+        // 启动WebSocket
+        connectWebSocket();
+
+        // 启动倒计时
+        startCountdown();
+
+        // 页面可见性检测
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    /*
+    连接WebSocket
+    */
+    function connectWebSocket() {
+        if (state.ws && (state.ws.readyState === WebSocket.OPEN || state.ws.readyState === WebSocket.CONNECTING)) {
+            console.log('[Payment WS] Already connected or connecting');
             return;
         }
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws/order?order_id=${orderId}`;
+        const wsURL = `${protocol}//${window.location.host}/ws/order?order_id=${state.orderId}`;
+        
+        console.log('[Payment WS] Connecting to:', wsURL);
+        state.ws = new WebSocket(wsURL);
 
-        console.log('[WS] Connecting to:', wsUrl);
-        showToast('正在连接实时推送服务...', 'info', 1500);
+        state.ws.onopen = handleWSOpen;
+        state.ws.onmessage = handleWSMessage;
+        state.ws.onclose = handleWSClose;
+        state.ws.onerror = handleWSError;
+    }
 
-        try {
-            PaymentState.ws = new WebSocket(wsUrl);
-            
-            PaymentState.ws.onopen = this.onOpen.bind(this);
-            PaymentState.ws.onmessage = this.onMessage.bind(this);
-            PaymentState.ws.onerror = this.onError.bind(this);
-            PaymentState.ws.onclose = this.onClose.bind(this);
-        } catch (error) {
-            console.error('[WS] Connection error:', error);
-            this.fallbackToPolling();
+    /*
+    WebSocket打开事件
+    */
+    function handleWSOpen() {
+        console.log('[Payment WS] Connected successfully');
+        state.reconnectAttempts = 0;
+        updateStatus('checking', '正在等待支付...');
+        
+        // 停止HTTP轮询（如果有）
+        if (state.polling) {
+            stopPolling();
         }
-    },
+        
+        showToast('✅ 实时连接已建立', 'success', 2000);
+    }
 
-    /**
-     * 连接打开回调
-     */
-    onOpen: function() {
-        console.log('[WS] Connected successfully');
-        PaymentState.isConnected = true;
-        PaymentState.reconnectAttempts = 0;
-        updateConnectionStatus(true);
-        showToast('实时推送已连接', 'success', 1500);
-    },
-
-    /**
-     * 接收消息回调
-     * @param {MessageEvent} event - 消息事件
-     */
-    onMessage: function(event) {
+    /*
+    WebSocket消息事件
+    */
+    function handleWSMessage(event) {
         try {
             const data = JSON.parse(event.data);
-            console.log('[WS] Message received:', data);
+            console.log('[Payment WS] Received:', data);
 
-            if (data.type === 'status_update') {
-                handleStatusUpdate(data);
+            if (data.type === 'status_update' && data.order_id === state.orderId) {
+                if (data.status === 1 && !state.paid) {
+                    handlePaymentSuccess(data);
+                }
             }
-        } catch (error) {
-            console.error('[WS] Message parse error:', error);
+        } catch (e) {
+            console.error('[Payment WS] Parse error:', e);
         }
-    },
-
-    /**
-     * 错误回调
-     * @param {Event} error - 错误事件
-     */
-    onError: function(error) {
-        console.error('[WS] Error:', error);
-        updateConnectionStatus(false);
-    },
-
-    /**
-     * 连接关闭回调
-     * @param {CloseEvent} event - 关闭事件
-     */
-    onClose: function(event) {
-        console.log('[WS] Connection closed:', event.code, event.reason);
-        PaymentState.isConnected = false;
-        updateConnectionStatus(false);
-
-        // 自动重连
-        if (PaymentState.reconnectAttempts < PaymentState.maxReconnectAttempts) {
-            const delay = Math.min(1000 * Math.pow(2, PaymentState.reconnectAttempts), 30000);
-            console.log(`[WS] Reconnecting in ${delay}ms...`);
-            
-            PaymentState.reconnectTimer = setTimeout(() => {
-                PaymentState.reconnectAttempts++;
-                this.connect(PaymentState.orderId);
-            }, delay);
-        } else {
-            console.log('[WS] Max reconnect attempts reached, falling back to polling');
-            showToast('实时推送连接失败，切换到轮询模式', 'warning', 3000);
-            this.fallbackToPolling();
-        }
-    },
-
-    /**
-     * 关闭连接
-     */
-    close: function() {
-        if (PaymentState.ws) {
-            PaymentState.ws.close();
-            PaymentState.ws = null;
-        }
-        if (PaymentState.reconnectTimer) {
-            clearTimeout(PaymentState.reconnectTimer);
-            PaymentState.reconnectTimer = null;
-        }
-    },
-
-    /**
-     * 降级到HTTP轮询
-     */
-    fallbackToPolling: function() {
-        console.log('[Polling] Starting HTTP polling fallback');
-        startPolling();
-    }
-};
-
-/*
-处理订单状态更新
-@param {Object} data - 状态更新数据
-*/
-function handleStatusUpdate(data) {
-    console.log('[Status] Update received:', data);
-
-    const statusIndicator = document.getElementById('statusIndicator');
-    const statusText = document.querySelector('.status-text');
-
-    if (data.status === 1) {
-        // 支付成功
-        statusIndicator.classList.remove('checking');
-        statusIndicator.classList.add('success');
-        statusText.textContent = '✓ 支付成功！';
-
-        // 停止倒计时
-        stopCountdown();
-
-        // 显示成功提示
-        showToast('支付成功！正在跳转...', 'success', 2000);
-
-        // 关闭WebSocket
-        WebSocketManager.close();
-
-        // 延迟跳转
-        setTimeout(() => {
-            const returnUrl = document.querySelector('[data-return-url]')?.getAttribute('data-return-url');
-            if (returnUrl) {
-                window.location.href = returnUrl;
-            } else {
-                showToast('支付完成', 'success');
-            }
-        }, 2000);
-    }
-}
-
-/*
-更新连接状态显示
-@param {boolean} connected - 是否已连接
-*/
-function updateConnectionStatus(connected) {
-    const indicator = document.getElementById('statusIndicator');
-    if (!indicator) return;
-
-    if (connected) {
-        indicator.style.borderColor = '#52c41a';
-    } else {
-        indicator.style.borderColor = '#faad14';
-    }
-}
-
-/*
-HTTP轮询 (降级方案)
-*/
-function startPolling() {
-    const pid = document.querySelector('[data-pid]')?.getAttribute('data-pid');
-    const outTradeNo = document.querySelector('[data-out-trade-no]')?.getAttribute('data-out-trade-no');
-
-    if (!pid || !outTradeNo) return;
-
-    const poll = setInterval(async () => {
-        try {
-            const response = await fetch(`/api/order?pid=${pid}&out_trade_no=${outTradeNo}`);
-            const data = await response.json();
-
-            if (data.status === 1) {
-                clearInterval(poll);
-                handleStatusUpdate({ status: 1, type: 'status_update' });
-            }
-        } catch (error) {
-            console.error('[Polling] Error:', error);
-        }
-    }, 3000);
-
-    // 保存定时器ID用于清理
-    PaymentState.pollingTimer = poll;
-}
-
-/*
-倒计时管理
-*/
-function startCountdown() {
-    const countdownEl = document.getElementById('countdownTime');
-    if (!countdownEl) return;
-
-    const createTimeStr = document.querySelector('[data-create-time]')?.getAttribute('data-create-time');
-    if (createTimeStr) {
-        const createTime = new Date(createTimeStr.replace(' ', 'T'));
-        const now = new Date();
-        const elapsed = Math.floor((now - createTime) / 1000);
-        PaymentState.timeLeft = Math.max(0, 300 - elapsed);
     }
 
-    PaymentState.countdownTimer = setInterval(() => {
-        if (PaymentState.timeLeft <= 0) {
-            stopCountdown();
-            countdownEl.textContent = '已过期';
-            countdownEl.style.color = '#ff4d4f';
-            showToast('订单已过期', 'error', 3000);
+    /*
+    WebSocket关闭事件
+    */
+    function handleWSClose(event) {
+        console.warn('[Payment WS] Disconnected:', event.code, event.reason);
+
+        if (state.paid) {
+            console.log('[Payment WS] Already paid, not reconnecting');
             return;
         }
 
-        const minutes = Math.floor(PaymentState.timeLeft / 60);
-        const seconds = PaymentState.timeLeft % 60;
-        countdownEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        PaymentState.timeLeft--;
-    }, 1000);
-}
-
-function stopCountdown() {
-    if (PaymentState.countdownTimer) {
-        clearInterval(PaymentState.countdownTimer);
-        PaymentState.countdownTimer = null;
-    }
-}
-
-/*
-拉起支付宝APP
-功能: 在移动端调用支付宝URL Scheme拉起APP
-*/
-function launchAlipay() {
-    if (!DeviceDetector.isMobile()) {
-        showToast('请使用手机扫描二维码支付', 'warning');
-        return;
-    }
-
-    const qrCodeId = document.querySelector('[data-qrcode-id]')?.getAttribute('data-qrcode-id');
-    const amount = document.querySelector('[data-amount]')?.getAttribute('data-amount');
-    const tradeNo = document.querySelector('[data-trade-no]')?.getAttribute('data-trade-no');
-
-    if (!qrCodeId) {
-        showToast('系统配置错误：缺少收款码ID', 'error');
-        return;
-    }
-
-    if (DeviceDetector.isWeChat()) {
-        showToast('请点击右上角，选择"在浏览器中打开"', 'info', 3000);
-        return;
-    }
-
-    const alipayUrl = encodeURIComponent(`https://qr.alipay.com/${qrCodeId}?amount=${amount}&remark=${tradeNo}`);
-    const scheme = `alipays://platformapi/startapp?saId=10000007&url=${alipayUrl}`;
-
-    console.log('[Alipay] Launching with scheme:', scheme);
-    showToast('正在打开支付宝...', 'success');
-
-    window.location.href = scheme;
-}
-
-/*
-Toast提示组件
-@param {string} message - 提示内容
-@param {string} type - 类型: success/error/warning/info
-@param {number} duration - 显示时长(ms)
-*/
-function showToast(message, type = 'info', duration = 2000) {
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        padding: 12px 24px;
-        border-radius: 8px;
-        color: white;
-        font-size: 14px;
-        z-index: 10000;
-        animation: slideDown 0.3s ease;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    `;
-
-    const colors = {
-        success: '#52c41a',
-        error: '#ff4d4f',
-        warning: '#faad14',
-        info: '#1677ff'
-    };
-    toast.style.backgroundColor = colors[type] || colors.info;
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.animation = 'slideUp 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, duration);
-}
-
-/*
-页面初始化
-功能: 页面加载时执行的初始化逻辑
-*/
-function initPaymentPage() {
-    const deviceType = DeviceDetector.getDeviceType();
-    const launchBtn = document.getElementById('alipayLaunchBtn');
-    
-    console.log('[Device] Type:', deviceType);
-
-    // 处理拉起支付宝按钮
-    if (launchBtn) {
-        if (DeviceDetector.isMobile()) {
-            launchBtn.parentElement.style.display = 'block';
+        if (state.reconnectAttempts < CONFIG.WS_RECONNECT_ATTEMPTS) {
+            state.reconnectAttempts++;
+            const delay = Math.min(
+                CONFIG.WS_RECONNECT_INTERVAL * Math.pow(2, state.reconnectAttempts - 1),
+                CONFIG.WS_MAX_RECONNECT_INTERVAL
+            );
             
-            if (DeviceDetector.isWeChat()) {
-                launchBtn.innerHTML = `
-                    <svg class="alipay-icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="20" height="20">
-                        <path d="M1024 701.9v202.8c0 66.6-53.9 120.4-120.4 120.4H120.4C53.9 1025.1 0 971.3 0 904.7V120.4C0 53.9 53.9 0 120.4 0h783.1c66.6 0 120.4 53.9 120.4 120.4V701.9z" fill="#00A0E9"/>
-                        <path d="M928.9 735.7c-99.7-47.4-244.8-110.9-325.6-146.5 21.9-36.3 39.3-75.8 51.6-117.6H546v-64.3h199.4v-38.7H546v-96.8h-38.7c0 0 0 0 0 0H444.2v96.8H244.8v38.7h199.4v64.3H335.3c-32.3 116.5-103.9 217.4-203.5 289.2 51.6 39.3 122.5 72.6 171.1 90.6 90.6-77.4 154.8-184.5 184.5-315.5h258.1c-19.4 64.3-45.2 125.8-77.4 181.3 38.7 16.1 141.9 58.1 225.8 96.8V735.7z" fill="#FFFFFF"/>
-                    </svg>
-                    <span>在浏览器中打开</span>
-                `;
-            }
+            console.log(`[Payment WS] Reconnecting in ${delay}ms... (${state.reconnectAttempts}/${CONFIG.WS_RECONNECT_ATTEMPTS})`);
+            showToast(`🔄 连接断开，${delay / 1000}秒后重连...`, 'warning', 2000);
+            
+            setTimeout(connectWebSocket, delay);
         } else {
-            launchBtn.parentElement.innerHTML = `
-                <div class="pc-scan-tip">
-                    <div style="font-size: 16px; margin-bottom: 8px;">💻 电脑端访问</div>
-                    <div style="font-size: 14px; color: #00000073;">
-                        请使用手机扫描上方二维码完成支付
-                    </div>
-                </div>
-            `;
+            console.warn('[Payment WS] Max reconnect attempts reached, falling back to HTTP polling');
+            showToast('⚠️ 实时推送不可用，已切换为轮询模式', 'warning', 3000);
+            fallbackToPolling();
         }
     }
 
-    // 添加动画样式
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes slideDown {
-            from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
-            to { transform: translateX(-50%) translateY(0); opacity: 1; }
-        }
-        @keyframes slideUp {
-            from { transform: translateX(-50%) translateY(0); opacity: 1; }
-            to { transform: translateX(-50%) translateY(-20px); opacity: 0; }
-        }
-        .pc-scan-tip {
-            text-align: center;
-            padding: 20px;
-            background: #f5f5f5;
-            border-radius: 12px;
-            color: #000000d9;
-        }
-    `;
-    document.head.appendChild(style);
+    /*
+    WebSocket错误事件
+    */
+    function handleWSError(error) {
+        console.error('[Payment WS] Error:', error);
+        // onclose会被触发，在那里处理重连
+    }
 
-    // 获取订单ID并连接WebSocket
-    const orderId = document.querySelector('[data-order-id]')?.getAttribute('data-order-id');
-    if (orderId) {
-        PaymentState.orderId = orderId;
-        WebSocketManager.connect(orderId);
+    /*
+    降级到HTTP轮询
+    */
+    function fallbackToPolling() {
+        if (state.polling) {
+            return;
+        }
+
+        console.log('[Payment WS] Starting HTTP polling');
+        state.polling = true;
+        updateStatus('checking', '正在轮询支付状态...');
+
+        // 立即检查一次
+        checkOrderStatus();
+
+        // 定期轮询
+        state.pollTimer = setInterval(checkOrderStatus, CONFIG.HTTP_POLL_INTERVAL);
+    }
+
+    /*
+    停止HTTP轮询
+    */
+    function stopPolling() {
+        if (!state.polling) {
+            return;
+        }
+
+        console.log('[Payment WS] Stopping HTTP polling');
+        state.polling = false;
+
+        if (state.pollTimer) {
+            clearInterval(state.pollTimer);
+            state.pollTimer = null;
+        }
+    }
+
+    /*
+    HTTP方式检查订单状态
+    */
+    function checkOrderStatus() {
+        if (state.paid) {
+            stopPolling();
+            return;
+        }
+
+        const url = `/api?act=order&pid=${state.pid}&trade_no=${state.orderId}`;
+        console.log('[Payment HTTP] Checking:', url);
+
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                console.log('[Payment HTTP] Order status:', data);
+                
+                if (data.code === 1 && data.status === 1) {
+                    handlePaymentSuccess(data);
+                }
+            })
+            .catch(err => {
+                console.error('[Payment HTTP] Check failed:', err);
+            });
+    }
+
+    /*
+    处理支付成功
+    */
+    function handlePaymentSuccess(data) {
+        if (state.paid) {
+            return;
+        }
+
+        state.paid = true;
+        console.log('[Payment] 🎉 Payment successful!', data);
+
+        // 停止所有定时器
+        stopCountdown();
+        stopPolling();
+        
+        // 关闭WebSocket
+        if (state.ws) {
+            state.ws.close();
+        }
+
+        // 更新UI
+        updateStatus('success', '✅ 支付成功！页面即将跳转...');
+        showToast('💰 支付成功！', 'success', 3000);
+
+        // 状态指示器变绿
+        if (elements.statusIndicator) {
+            elements.statusIndicator.style.background = 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)';
+            elements.statusIndicator.style.color = '#fff';
+            elements.statusIndicator.style.transform = 'scale(1.05)';
+        }
+
+        // 延迟跳转
+        setTimeout(() => {
+            // 优先使用return_url，否则使用默认返回页面
+            const returnUrl = getReturnURL();
+            if (returnUrl) {
+                window.location.href = returnUrl;
+            } else {
+                window.location.href = `/return?trade_no=${state.orderId}`;
+            }
+        }, CONFIG.REDIRECT_DELAY);
+    }
+
+    /*
+    启动倒计时
+    */
+    function startCountdown() {
+        if (state.countdownTimer) {
+            clearInterval(state.countdownTimer);
+        }
+
+        state.timeLeft = CONFIG.COUNTDOWN_TOTAL;
+        updateCountdownDisplay();
+
+        state.countdownTimer = setInterval(() => {
+            state.timeLeft--;
+            updateCountdownDisplay();
+
+            if (state.timeLeft <= 0) {
+                handleCountdownExpired();
+            }
+        }, 1000);
+    }
+
+    /*
+    停止倒计时
+    */
+    function stopCountdown() {
+        if (state.countdownTimer) {
+            clearInterval(state.countdownTimer);
+            state.countdownTimer = null;
+        }
+    }
+
+    /*
+    更新倒计时显示
+    */
+    function updateCountdownDisplay() {
+        if (!elements.countdownTime) {
+            return;
+        }
+
+        const minutes = Math.floor(state.timeLeft / 60);
+        const seconds = state.timeLeft % 60;
+        elements.countdownTime.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+        // 最后30秒变红
+        if (state.timeLeft <= 30 && state.timeLeft > 0) {
+            elements.countdownTime.style.color = '#ff4d4f';
+            elements.countdownTime.style.fontWeight = 'bold';
+        }
+    }
+
+    /*
+    倒计时到期
+    */
+    function handleCountdownExpired() {
+        console.log('[Payment] ⏰ Countdown expired');
+        
+        stopCountdown();
+        stopPolling();
+
+        if (state.ws) {
+            state.ws.close();
+        }
+
+        updateStatus('error', '⏰ 订单已超时，请重新下单');
+        showToast('订单已超时', 'error', 5000);
+
+        // 禁用二维码
+        if (elements.qrCode) {
+            elements.qrCode.style.opacity = '0.3';
+            elements.qrCode.style.filter = 'grayscale(100%)';
+        }
+    }
+
+    /*
+    页面可见性变化
+    */
+    function handleVisibilityChange() {
+        if (document.visibilityState === 'visible' && !state.paid) {
+            console.log('[Payment WS] 📱 Page visible, checking connection...');
+            
+            // 如果WebSocket断开，尝试重连
+            if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+                if (state.reconnectAttempts < CONFIG.WS_RECONNECT_ATTEMPTS) {
+                    state.reconnectAttempts = 0; // 重置重连次数
+                    connectWebSocket();
+                } else if (!state.polling) {
+                    // WebSocket已失败，确保轮询在运行
+                    fallbackToPolling();
+                }
+            }
+            
+            // 无论如何都检查一次状态
+            if (state.polling) {
+                checkOrderStatus();
+            }
+        }
+    }
+
+    /*
+    更新状态显示
+    */
+    function updateStatus(type, message) {
+        if (!elements.statusIndicator || !elements.statusText) {
+            return;
+        }
+
+        elements.statusIndicator.className = `status-indicator ${type}`;
+        elements.statusText.textContent = message;
+    }
+
+    /*
+    显示Toast通知
+    */
+    function showToast(message, type = 'info', duration = 3000) {
+        // 检查是否有全局toast函数
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type, duration);
+            return;
+        }
+
+        // 简单实现
+        console.log(`[Toast ${type}]`, message);
+        
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type} slide-in-right`;
+        
+        const bgColors = {
+            success: '#52c41a',
+            error: '#ff4d4f',
+            warning: '#faad14',
+            info: '#1677ff'
+        };
+        
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            background: ${bgColors[type] || bgColors.info};
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            font-size: 14px;
+            animation: slideInRight 0.3s ease;
+            max-width: 300px;
+        `;
+
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.animation = 'fadeOut 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    /*
+    获取返回URL
+    */
+    function getReturnURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('return_url') || '';
+    }
+
+    // 页面加载完成后初始化
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        console.error('[Init] No order ID found');
-        startPolling(); // 降级到轮询
+        init();
     }
 
-    // 启动倒计时
-    startCountdown();
-}
-
-// 页面加载完成后初始化
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPaymentPage);
-} else {
-    initPaymentPage();
-}
-
-// 页面卸载时清理
-window.addEventListener('beforeunload', () => {
-    WebSocketManager.close();
-    stopCountdown();
-    if (PaymentState.pollingTimer) {
-        clearInterval(PaymentState.pollingTimer);
-    }
-});
-
+    // 导出到全局（供调试使用）
+    window.PaymentWS = {
+        state,
+        reconnect: connectWebSocket,
+        checkStatus: checkOrderStatus,
+        getState: () => ({ ...state })
+    };
+})();
