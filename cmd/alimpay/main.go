@@ -277,7 +277,7 @@ func main() {
 			logger.Fatal("Failed to start HTTP server", zap.Error(err))
 		}
 	}()
-	merchantInfo := codepayService.GetMerchantInfo()
+	merchantInfo = codepayService.GetMerchantInfo()
 
 	fmt.Println("\n╔════════════════════════════════════════════════════════╗")
 	fmt.Println("║         🚀 AliMPay Golang Version Started            ║")
