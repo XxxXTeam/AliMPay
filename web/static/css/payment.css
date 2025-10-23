@@ -468,3 +468,132 @@ body {
     }
 }
 
+/* ==================== 增强响应式设计 ==================== */
+
+/* 超小屏幕 (< 375px) */
+@media (max-width: 374px) {
+    .payment-header h1 {
+        font-size: 18px;
+    }
+
+    .qrcode-wrapper {
+        width: 180px;
+        height: 180px;
+    }
+
+    .order-info {
+        padding: 12px;
+        font-size: 13px;
+    }
+
+    .alipay-launch-btn {
+        font-size: 14px;
+        padding: 12px;
+    }
+}
+
+/* 中等屏幕 (768px - 991px) - 平板竖屏 */
+@media (min-width: 768px) and (max-width: 991px) {
+    .payment-container {
+        max-width: 600px;
+        padding: 24px;
+    }
+
+    .qrcode-wrapper {
+        width: 260px;
+        height: 260px;
+    }
+
+    .payment-header h1 {
+        font-size: 24px;
+    }
+}
+
+/* 大屏幕 (992px - 1199px) - 平板横屏/小笔记本 */
+@media (min-width: 992px) and (max-width: 1199px) {
+    .payment-container {
+        max-width: 700px;
+    }
+
+    .qrcode-wrapper {
+        width: 280px;
+        height: 280px;
+    }
+}
+
+/* 超大屏幕 (≥ 1200px) - 台式机/大笔记本 */
+@media (min-width: 1200px) {
+    .payment-container {
+        max-width: 800px;
+    }
+
+    .qrcode-wrapper {
+        width: 300px;
+        height: 300px;
+    }
+}
+
+/* 横屏模式优化 */
+@media (orientation: landscape) and (max-height: 500px) {
+    .payment-container {
+        max-width: 90%;
+        padding: 12px;
+        margin: 12px auto;
+    }
+
+    .qrcode-wrapper {
+        width: 180px;
+        height: 180px;
+    }
+
+    .payment-header {
+        padding: 16px 0;
+    }
+
+    .payment-footer {
+        padding: 16px 0;
+    }
+}
+
+/* 高DPI屏幕优化 (Retina显示屏) */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .qrcode-wrapper img {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+
+    .payment-container {
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    }
+}
+
+/* 打印样式 */
+@media print {
+    body {
+        background: white;
+    }
+
+    .payment-container {
+        box-shadow: none;
+        max-width: 100%;
+    }
+
+    .alipay-launch-btn,
+    .payment-footer {
+        display: none;
+    }
+
+    .qrcode-wrapper {
+        page-break-inside: avoid;
+    }
+}
+
+/* 无障碍优化 */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+

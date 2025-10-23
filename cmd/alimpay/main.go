@@ -139,6 +139,7 @@ func main() {
 	yipayHandler := handler.NewYiPayHandler(db, codepayService, cfg)
 	payHandler := handler.NewPayHandler(db, cfg)
 	wsHandler := handler.NewWebSocketHandler(db)
+	adminWsHandler := handler.NewAdminWebSocketHandler(db)
 
 	// 注册路由 - 易支付/码支付标准接口
 
@@ -190,7 +191,8 @@ func main() {
 	router.GET("/pay", payHandler.HandlePayPage) // 支付页面（扫码后跳转）
 
 	// WebSocket接口 - 实时订单状态推送
-	router.GET("/ws/order", wsHandler.HandleWebSocket)
+	router.GET("/ws/order", wsHandler.HandleWebSocket)       // 用户支付页面WebSocket
+	router.GET("/ws/admin", adminWsHandler.HandleWebSocket)  // 管理后台WebSocket
 
 	// 管理接口
 	router.GET("/admin/dashboard", adminHandler.HandleDashboard) // 管理后台页面

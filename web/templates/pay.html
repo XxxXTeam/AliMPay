@@ -4,10 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="description" content="支付宝扫码支付">
+    <meta name="theme-color" content="#1677ff">
     <title>扫码支付 - AliMPay</title>
     <link rel="stylesheet" href="/static/css/payment.css">
+    <link rel="stylesheet" href="/static/css/animations.css">
 </head>
 <body>
+    <!-- 页面加载动画 -->
+    <div class="loading-overlay" id="pageLoader">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">正在加载支付页面...</div>
+        </div>
+    </div>
     <div class="payment-container">
         <!-- Header -->
         <div class="payment-header">
@@ -116,15 +125,29 @@
         <div data-trade-no="{{.order.trade_no}}"></div>
     </div>
 
+    <script src="/static/js/browser-detect.js"></script>
+    <script src="/static/js/payment-ws.js"></script>
     <script src="/static/js/payment.js"></script>
     <script>
+        // 移除页面加载动画
+        window.addEventListener('DOMContentLoaded', function() {
+            const pageLoader = document.getElementById('pageLoader');
+            if (pageLoader) {
+                setTimeout(() => {
+                    pageLoader.classList.add('fade-out');
+                    setTimeout(() => pageLoader.remove(), 300);
+                }, 500);
+            }
+        });
+
         function contactSupport() {
             alert('如需帮助，请联系商户客服\n\n订单号：{{.order.trade_no}}');
         }
 
         /**
-         * 设备检测工具类
-         * @description 检测用户设备类型和浏览器环境
+         * 设备检测工具类（向后兼容）
+         * @description 使用BrowserDetector提供向后兼容的API
+         * @deprecated 请直接使用BrowserDetector
          */
         const DeviceDetector = {
             /** 检测是否为移动设备 */

@@ -10,6 +10,7 @@ import (
 
 	"alimpay-go/internal/config"
 	"alimpay-go/internal/database"
+	"alimpay-go/internal/events"
 	"alimpay-go/internal/model"
 	"alimpay-go/pkg/lock"
 	"alimpay-go/pkg/logger"
@@ -185,6 +186,9 @@ func (s *CodePayService) CreatePayment(params map[string]string, baseURL string)
 	if err := s.db.CreateOrder(order); err != nil {
 		return nil, fmt.Errorf("failed to create order: %w", err)
 	}
+
+	// 发布订单创建事件（触发管理后台WebSocket推送）
+	events.PublishOrderCreated(order)
 
 	logger.Info("Order created",
 		zap.String("trade_no", tradeNo),
