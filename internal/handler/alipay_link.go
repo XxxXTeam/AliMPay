@@ -95,13 +95,13 @@ func (h *AlipayLinkHandler) HandleGenerateLink(c *gin.Context) {
 
 	// 返回结果
 	c.JSON(http.StatusOK, gin.H{
-		"code":            1,
-		"msg":             "SUCCESS",
-		"qr_code_id":      qrCodeID,
-		"amount":          amount,
-		"remark":          remark,
+		"code":             1,
+		"msg":              "SUCCESS",
+		"qr_code_id":       qrCodeID,
+		"amount":           amount,
+		"remark":           remark,
 		"alipay_deep_link": deepLink,
-		"usage":           "在移动端浏览器中访问此链接可直接拉起支付宝进行支付",
+		"usage":            "在移动端浏览器中访问此链接可直接拉起支付宝进行支付",
 	})
 }
 

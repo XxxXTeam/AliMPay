@@ -46,7 +46,7 @@ func GenerateAlipayDeepLink(qrCodeID string, amount float64, remark string) stri
 
 	// 构建支付宝二维码URL，格式: https://qr.alipay.com/{qrCodeId}?amount={amount}&remark={remark}
 	alipayQRURL := fmt.Sprintf("https://qr.alipay.com/%s", qrCodeID)
-	
+
 	// 添加查询参数
 	params := url.Values{}
 	if amount > 0 {
@@ -55,7 +55,7 @@ func GenerateAlipayDeepLink(qrCodeID string, amount float64, remark string) stri
 	if remark != "" {
 		params.Add("remark", remark)
 	}
-	
+
 	if len(params) > 0 {
 		alipayQRURL += "?" + params.Encode()
 	}
