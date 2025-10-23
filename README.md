@@ -50,6 +50,8 @@ AliMPay Golang Edition 是一个基于 Go 语言开发的高性能支付宝码�
 
 ## 📚 文档 / Documentation
 
+**📖 [完整文档中心](docs/README.md)** - 查看所有文档的索引和导航
+
 完整的文档帮助您快速上手和深入了解系统：
 
 ### 新手入门 / Getting Started
