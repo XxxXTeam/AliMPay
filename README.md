@@ -9,7 +9,7 @@
 
 高性能支付宝码支付/易支付接口系统 Golang 实现
 
-[功能特性](#功能特性) • [快速开始](#快速开始) • [API文档](#api文档) • [部署指南](#部署指南)
+[功能特性](#功能特性) • [快速开始](#快速开始) • [文档](#文档) • [API文档](#api文档) • [部署指南](#部署指南) • [常见问题](#常见问题)
 
 </div>
 
@@ -48,7 +48,38 @@ AliMPay Golang Edition 是一个基于 Go 语言开发的高性能支付宝码�
 
 ---
 
+## 📚 文档 / Documentation
+
+完整的文档帮助您快速上手和深入了解系统：
+
+### 新手入门 / Getting Started
+- **[📖 快速开始指南](docs/QUICKSTART.md)** - 10分钟快速部署运行
+- **[🚀 部署教程](docs/DEPLOYMENT.md)** - 详细的部署指南（Docker、Systemd、Nginx等）
+- **[🔌 接入教程](docs/INTEGRATION.md)** - 如何集成到您的应用（含多语言示例）
+
+### 参考文档 / Reference
+- **[📡 API 文档](docs/API.md)** - 完整的 API 接口说明
+- **[❓ 常见问题](docs/FAQ.md)** - 常见问题解答
+- **[⚙️ 配置说明](configs/config.example.yaml)** - 详细的配置文件注释
+- **[🔧 易支付兼容性](EPAY_COMPATIBILITY.md)** - 易支付/码支付兼容说明
+
+### 贡献 / Contributing
+- **[🤝 贡献指南](CONTRIBUTING.md)** - 如何参与项目贡献
+- **[📝 提交规范](docs/COMMIT_GUIDELINES.md)** - Git 提交信息规范（即将添加）
+
+---
+
 ## 🚀 快速开始
+
+### 一键体验 / Quick Experience
+
+**只需三步即可开始使用：**
+
+1. **准备支付宝配置** - 从支付宝开放平台获取 AppID 和密钥
+2. **部署 AliMPay** - 使用 Docker 或直接运行
+3. **开始接收支付** - 集成 API 到您的应用
+
+**详细步骤请查看：** [📖 快速开始指南](docs/QUICKSTART.md)
 
 ### 环境要求
 
@@ -76,18 +107,23 @@ vim configs/config.yaml
 
 **必需配置项：**
 
+详细的配置说明请查看 [配置文件注释](configs/config.example.yaml)
+
 ```yaml
 alipay:
-  app_id: "你的支付宝应用ID"
-  private_key: "你的应用私钥"
-  alipay_public_key: "支付宝公钥"
-  transfer_user_id: "收款支付宝用户ID"
+  app_id: "你的支付宝应用ID"                    # 从支付宝开放平台获取
+  private_key: "你的应用私钥"                   # 使用密钥生成工具生成
+  alipay_public_key: "支付宝公钥"               # 从支付宝开放平台获取
+  transfer_user_id: "收款支付宝用户ID"          # 您的支付宝账号UID
 
 payment:
   business_qr_mode:
-    enabled: true
-    qr_code_path: "./qrcode/business_qr.png"  # 经营码图片路径
+    enabled: true                               # 启用经营码模式（推荐）
+    qr_code_path: "./qrcode/business_qr.png"   # 经营码图片路径
+    qr_code_id: ""                              # 可选：收款码ID，用于拉起支付宝
 ```
+
+> 💡 **提示：** 配置文件包含详细的中英文注释，每个配置项都有说明和示例。
 
 #### 3. 初始化数据库
 
@@ -115,6 +151,10 @@ make build
 ---
 
 ## 🐳 Docker 部署
+
+Docker 是最简单的部署方式，推荐生产环境使用。
+
+**详细部署教程：** [🚀 部署指南](docs/DEPLOYMENT.md)
 
 ### 使用 Docker
 
@@ -149,6 +189,11 @@ docker-compose down
 ---
 
 ## 📡 API 文档
+
+AliMPay 完全兼容易支付和码支付标准接口。
+
+**完整 API 文档：** [📡 API Reference](docs/API.md)  
+**接入教程：** [🔌 集成指南](docs/INTEGRATION.md)
 
 ### 码支付标准接口
 
@@ -364,30 +409,68 @@ docker-compose logs -f alimpay
 
 ### Q: 如何获取支付宝相关配置？
 
-A: 
+**A:** 详细步骤请查看 [快速开始指南](docs/QUICKSTART.md#步骤-1-获取支付宝配置--step-1-get-alipay-configuration)
+
+简要步骤：
 1. 登录支付宝开放平台：https://open.alipay.com
 2. 创建应用并获取 `app_id`
-3. 生成应用私钥和公钥
-4. 获取支付宝公钥
-5. 开通相关接口权限
+3. 使用密钥生成工具生成应用私钥和公钥
+4. 上传应用公钥并获取支付宝公钥
+5. 在账号中心查看账号UID（用户ID）
+6. 开通相关接口权限
 
 ### Q: 经营码收款和转账模式有什么区别？
 
-A:
-- **经营码模式**（推荐）：使用固定的经营码收款，系统通过金额匹配订单
-- **转账模式**：动态生成转账二维码，每个订单独立二维码
+**A:**
+- **经营码模式**（推荐）：使用固定的经营码收款，系统通过金额匹配订单，到账快，用户体验好
+- **转账模式**：动态生成转账二维码，每个订单独立二维码，更灵活但配置相对复杂
+
+推荐使用经营码模式，只需上传一张经营码图片即可。
 
 ### Q: 如何查看商户ID和密钥？
 
-A: 首次运行后会自动生成，查看日志或配置文件中的 `merchant` 部分。
+**A:** 首次运行后会自动生成，有以下几种查看方式：
+
+1. **查看日志**
+   ```bash
+   tail -f logs/alimpay.log | grep "Merchant"
+   ```
+
+2. **查看配置文件**
+   ```bash
+   cat configs/config.yaml | grep -A 2 "merchant:"
+   ```
+
+3. **通过API查询**
+   ```bash
+   curl "http://localhost:8080/api?action=query&pid=YOUR_PID&key=YOUR_KEY"
+   ```
 
 ### Q: 支付后没有自动跳转？
 
-A: 检查以下几点：
-1. 确认支付宝API配置正确
-2. 查看监控服务是否正常运行
-3. 检查账单查询接口权限
-4. 查看系统日志排查问题
+**A:** 请检查以下几点：
+
+1. **监控服务是否启用**
+   ```yaml
+   monitor:
+     enabled: true  # 必须为 true
+   ```
+
+2. **支付宝API权限**
+   - 确认已开通"查询对账单下载地址"权限
+   - 确认支付宝配置正确
+
+3. **查看日志**
+   ```bash
+   tail -f logs/alimpay.log | grep "monitor"
+   ```
+
+4. **手动触发监控**
+   ```bash
+   curl "http://localhost:8080/health?action=monitor"
+   ```
+
+**更多问题请查看：** [❓ 常见问题文档](docs/FAQ.md)
 
 ---
 

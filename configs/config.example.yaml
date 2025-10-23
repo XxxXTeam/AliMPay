@@ -1,115 +1,341 @@
-# AliMPay Golang Version Configuration
-# 支付宝码支付系统配置文件
+# ============================================================================
+# AliMPay Golang 版本配置文件 / AliMPay Golang Version Configuration
+# ============================================================================
+# 
+# 使用说明 / Usage Instructions:
+# 1. 复制此文件为 config.yaml: cp config.example.yaml config.yaml
+# 2. 根据实际情况修改配置项 / Modify configuration items according to your needs
+# 3. 必填项不能为空 / Required fields cannot be empty
+# 4. 配置修改后需重启服务 / Restart service after configuration changes
+#
+# ============================================================================
 
+# ============================================================================
+# 服务器配置 / Server Configuration
+# ============================================================================
 server:
+  # 监听地址 / Listen address
+  # 0.0.0.0 表示监听所有网卡，127.0.0.1 仅本地访问
+  # 0.0.0.0 means listen on all interfaces, 127.0.0.1 for localhost only
   host: "0.0.0.0"
+  
+  # 监听端口 / Listen port
+  # 默认 8080，生产环境建议使用 Nginx 反向代理
+  # Default 8080, recommend using Nginx reverse proxy in production
   port: 8080
-  mode: "release"  # debug, release, test
+  
+  # 运行模式 / Run mode
+  # debug: 调试模式，输出详细日志 / Debug mode with verbose logging
+  # release: 生产模式，性能最优 / Production mode with best performance
+  # test: 测试模式 / Test mode
+  mode: "release"
+  
+  # HTTP 读取超时时间（秒）/ HTTP read timeout in seconds
+  # 建议值：60-120 / Recommended: 60-120
   read_timeout: 60
+  
+  # HTTP 写入超时时间（秒）/ HTTP write timeout in seconds  
+  # 建议值：60-120 / Recommended: 60-120
   write_timeout: 60
-  base_url: ""  # 留空则自动从请求获取，或手动指定如: https://your-domain.com
+  
+  # 网站基础URL / Website base URL
+  # 留空则自动从请求中获取 / Leave empty to auto-detect from request
+  # 手动指定示例 / Manual example: https://your-domain.com
+  # 注意：不要以斜杠结尾 / Note: Do not end with slash
+  base_url: ""
 
+# ============================================================================
+# 支付宝配置 / Alipay Configuration
+# ============================================================================
+# 获取方式 / How to obtain:
+# 1. 登录支付宝开放平台 / Login to Alipay Open Platform: https://open.alipay.com
+# 2. 创建应用 / Create an application
+# 3. 获取 AppID 和密钥信息 / Get AppID and key information
+# 4. 签约必要的产品能力 / Subscribe to necessary product capabilities
+# ============================================================================
 alipay:
-  # 支付宝网关地址
+  # 支付宝网关地址 / Alipay gateway URL
+  # 正式环境 / Production: https://openapi.alipay.com
+  # 沙箱环境 / Sandbox: https://openapi.alipaydev.com/gateway.do
   server_url: "https://openapi.alipay.com"
   
-  # 应用ID - 请填写您的AppId
+  # 应用ID / Application ID (AppID)
+  # 【必填】从支付宝开放平台获取，格式：2021xxxxxxxxxx
+  # [Required] Get from Alipay Open Platform, format: 2021xxxxxxxxxx
   app_id: ""
   
-  # 应用私钥 - 请填写您的应用私钥
+  # 应用私钥 / Application Private Key
+  # 【必填】使用支付宝密钥生成工具生成，请保管好私钥，切勿泄露
+  # [Required] Generated using Alipay key generation tool, keep it safe
+  # 格式 / Format: MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...
+  # 注意：只需要填写密钥内容，不需要 BEGIN/END 标记
+  # Note: Only fill in the key content, no BEGIN/END markers needed
   private_key: ""
   
-  # 支付宝公钥 - 请填写您的支付宝公钥
+  # 支付宝公钥 / Alipay Public Key
+  # 【必填】从支付宝开放平台获取（不是应用公钥）
+  # [Required] Get from Alipay Open Platform (NOT the application public key)
+  # 格式 / Format: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
   alipay_public_key: ""
   
-  # 转账用户ID - 请填写您的支付宝用户ID
+  # 转账收款用户ID / Transfer recipient user ID
+  # 【必填】您的支付宝账号对应的用户ID，格式：2088xxxxxxxxxxxxxx
+  # [Required] Your Alipay account user ID, format: 2088xxxxxxxxxxxxxx
+  # 获取方式 / How to get: 
+  #   1. 登录支付宝开放平台 / Login to Alipay Open Platform
+  #   2. 进入账号中心 / Go to Account Center
+  #   3. 查看账号UID / View Account UID
   transfer_user_id: ""
   
-  # 签名方式
+  # 签名方式 / Signature type
+  # RSA2 更安全，推荐使用 / RSA2 is more secure, recommended
   sign_type: "RSA2"
   
-  # 编码格式
+  # 编码格式 / Character encoding
+  # 固定值，不要修改 / Fixed value, do not modify
   charset: "UTF-8"
   
-  # 返回格式
+  # 返回格式 / Response format
+  # 固定值，不要修改 / Fixed value, do not modify
   format: "json"
 
+# ============================================================================
+# 数据库配置 / Database Configuration
+# ============================================================================
 database:
+  # 数据库类型 / Database type
+  # 当前仅支持 sqlite3，未来可能支持 mysql、postgresql
+  # Currently only supports sqlite3, may support mysql, postgresql in future
   type: "sqlite3"
+  
+  # 数据库文件路径 / Database file path
+  # SQLite 数据库文件位置，使用相对路径或绝对路径
+  # SQLite database file location, use relative or absolute path
   path: "./data/alimpay.db"
+  
+  # 最大空闲连接数 / Maximum idle connections
+  # 建议值：5-20 / Recommended: 5-20
   max_idle_conns: 10
+  
+  # 最大打开连接数 / Maximum open connections
+  # 建议值：50-200 / Recommended: 50-200
   max_open_conns: 100
-  conn_max_lifetime: 3600  # seconds
+  
+  # 连接最大生命周期（秒）/ Connection max lifetime in seconds
+  # 建议值：3600 (1小时) / Recommended: 3600 (1 hour)
+  conn_max_lifetime: 3600
 
+# ============================================================================
+# 支付配置 / Payment Configuration
+# ============================================================================
 payment:
-  # 最大等待时间（秒）
+  # 最大等待时间（秒）/ Maximum wait time in seconds
+  # 用户支付后等待服务器确认的最长时间
+  # Maximum time to wait for payment confirmation after user pays
   max_wait_time: 300
   
-  # 检查间隔（秒）
+  # 检查间隔（秒）/ Check interval in seconds
+  # 轮询检查支付状态的时间间隔，不建议设置过小
+  # Interval for polling payment status, not recommended to set too small
   check_interval: 3
   
-  # 查询历史记录的时间范围（分钟）
+  # 查询历史记录的时间范围（分钟）/ Query history time range in minutes
+  # 向前查询支付宝账单的时间范围
+  # Time range for querying Alipay transaction history backwards
   query_minutes_back: 30
   
-  # 订单超时时间（秒）
+  # 订单超时时间（秒）/ Order timeout in seconds
+  # 订单创建后多久未支付将自动关闭
+  # Orders will be auto-closed if not paid within this time
   order_timeout: 300
   
-  # 是否启用自动清理过期订单
+  # 是否启用自动清理过期订单 / Enable auto cleanup of expired orders
+  # 定期清理超时未支付的订单
+  # Periodically clean up timeout unpaid orders
   auto_cleanup: true
   
-  # 二维码尺寸
+  # 二维码尺寸（像素）/ QR code size in pixels
+  # 生成的二维码图片大小
+  # Generated QR code image size
   qr_code_size: 300
   
-  # 二维码边距
+  # 二维码边距（像素）/ QR code margin in pixels
+  # 二维码周围的留白
+  # White space around QR code
   qr_code_margin: 10
   
-  # 经营码收款配置
+  # ========================================================================
+  # 经营码收款配置 / Business QR Code Payment Configuration
+  # ========================================================================
+  # 经营码模式：使用固定的支付宝经营码收款，通过金额匹配订单
+  # Business QR mode: Use fixed Alipay business QR code, match orders by amount
   business_qr_mode:
+    # 是否启用经营码模式 / Enable business QR mode
+    # true: 使用经营码收款（推荐）/ Use business QR code (recommended)
+    # false: 使用动态转账二维码 / Use dynamic transfer QR code
     enabled: true
+    
+    # 经营码图片路径 / Business QR code image path
+    # 将您的支付宝经营码图片保存到此路径
+    # Save your Alipay business QR code image to this path
     qr_code_path: "./qrcode/business_qr.png"
-    # 支付宝收款码ID，用于手机端直接拉起支付宝APP
+    
+    # 支付宝收款码ID / Alipay collection code ID
     # 从支付宝收款码链接中获取，例如 https://qr.alipay.com/fkx123456 中的 fkx123456
-    # 留空则不显示"拉起支付宝"按钮
+    # Extract from Alipay QR code URL, e.g., fkx123456 from https://qr.alipay.com/fkx123456
+    # 填写后可在支付页面显示"拉起支付宝"按钮，方便手机用户直接打开支付宝APP
+    # If filled, will show "Open Alipay" button for mobile users to open Alipay app directly
+    # 留空则不显示该按钮 / Leave empty to hide the button
     qr_code_id: ""
+    
+    # 金额偏移量（元）/ Amount offset in yuan
+    # 为避免金额重复，在订单金额基础上增加的偏移量
+    # Offset added to order amount to avoid amount duplication
+    # 例如：订单1元，实际支付 1.01元 / e.g., order 1 yuan, actually pay 1.01 yuan
     amount_offset: 0.01
+    
+    # 金额匹配容差（秒）/ Amount matching tolerance in seconds
+    # 在此时间范围内的相同金额支付将匹配最早的未支付订单
+    # Same amount payments within this timeframe will match the earliest unpaid order
     match_tolerance: 300
+    
+    # 支付超时时间（秒）/ Payment timeout in seconds
+    # 订单创建后的支付有效时间
+    # Payment validity time after order creation
     payment_timeout: 300
   
-  # 防风控URL配置
+  # ========================================================================
+  # 防风控URL配置 / Anti-Risk URL Configuration
+  # ========================================================================
+  # 用于生成防风控的支付链接，提高支付成功率
+  # Used to generate anti-risk payment links to improve payment success rate
   anti_risk_url:
+    # 是否启用防风控URL / Enable anti-risk URL
     enabled: true
+    
+    # 外部应用ID / Outer app ID
+    # 固定值，不要修改 / Fixed value, do not modify
     outer_app_id: "20000218"
+    
+    # 内部应用ID / Inner app ID
+    # 固定值，不要修改 / Fixed value, do not modify
     inner_app_id: "20000116"
+    
+    # 免密支付落地页URL / Deduct landing URL
+    # 固定值，不要修改 / Fixed value, do not modify
     mdeduct_landing_url: "https://render.alipay.com/p/c/mdeduct-landing"
+    
+    # 渲染方案URL / Render scheme URL
+    # 固定值，不要修改 / Fixed value, do not modify
     render_scheme_url: "https://render.alipay.com/p/s/i"
 
+# ============================================================================
+# 商户配置 / Merchant Configuration
+# ============================================================================
+# 首次运行时系统会自动生成商户ID和密钥
+# Merchant ID and key will be auto-generated on first run
+# 生成后请妥善保管，用于API接口调用
+# Keep them safe after generation, used for API calls
+# ============================================================================
 merchant:
-  # 商户ID（系统自动生成，首次运行后填充）
+  # 商户ID / Merchant ID
+  # 【自动生成】系统首次运行时自动生成，格式：10位以上数字
+  # [Auto-generated] Generated on first run, format: 10+ digits
+  # 生成后会自动填充此处，不要手动修改
+  # Will be auto-filled after generation, do not modify manually
   id: ""
   
-  # 商户密钥（系统自动生成，首次运行后填充）
+  # 商户密钥 / Merchant Key
+  # 【自动生成】系统首次运行时自动生成，32位字符串
+  # [Auto-generated] Generated on first run, 32-character string
+  # 用于API签名验证，请妥善保管，不要泄露
+  # Used for API signature verification, keep it safe
   key: ""
   
-  # 费率
+  # 费率（百分比）/ Rate (percentage)
+  # 商户手续费率，0 表示免手续费
+  # Merchant fee rate, 0 means no fee
+  # 示例：96 表示费率 4% (100-96=4) / e.g., 96 means 4% fee (100-96=4)
   rate: 0
 
+# ============================================================================
+# 日志配置 / Logging Configuration
+# ============================================================================
 logging:
-  level: "info"  # debug, info, warn, error
-  format: "json"  # json, console
-  output: "file"  # file, stdout, both
+  # 日志级别 / Log level
+  # debug: 调试信息（最详细）/ Debug info (most verbose)
+  # info: 一般信息（推荐）/ General info (recommended)
+  # warn: 警告信息 / Warning info
+  # error: 错误信息 / Error info
+  level: "info"
+  
+  # 日志格式 / Log format
+  # json: JSON格式，便于日志收集系统解析 / JSON format, easy for log collection
+  # console: 控制台格式，便于人类阅读 / Console format, human-readable
+  format: "json"
+  
+  # 日志输出方式 / Log output method
+  # file: 输出到文件 / Output to file
+  # stdout: 输出到标准输出 / Output to stdout
+  # both: 同时输出到文件和标准输出 / Output to both file and stdout
+  output: "file"
+  
+  # 日志文件路径 / Log file path
+  # 日志文件保存位置 / Log file save location
   file_path: "./logs/alimpay.log"
-  max_size: 100  # megabytes
+  
+  # 单个日志文件最大大小（MB）/ Max size of single log file in megabytes
+  # 超过此大小将自动轮转 / Will auto-rotate when exceeds this size
+  max_size: 100
+  
+  # 保留的旧日志文件数量 / Number of old log files to keep
+  # 超过此数量的旧文件将被删除 / Old files exceeding this count will be deleted
   max_backups: 10
-  max_age: 30  # days
+  
+  # 日志文件保留天数 / Days to keep log files
+  # 超过此天数的日志将被删除 / Logs older than this will be deleted
+  max_age: 30
+  
+  # 是否压缩轮转的日志文件 / Compress rotated log files
+  # true: 压缩为 .gz 格式节省空间 / Compress to .gz to save space
+  # false: 不压缩 / Do not compress
   compress: true
 
+# ============================================================================
+# 监控配置 / Monitor Configuration
+# ============================================================================
+# 用于自动监控支付宝账单，匹配并更新订单状态
+# Used to auto-monitor Alipay bills, match and update order status
+# ============================================================================
 monitor:
-  # 监控服务启用
+  # 是否启用监控服务 / Enable monitor service
+  # true: 启用自动监控（推荐，经营码模式必须启用）
+  # true: Enable auto-monitoring (recommended, required for business QR mode)
+  # false: 禁用自动监控 / Disable auto-monitoring
   enabled: true
   
-  # 监控间隔（秒）- 订单监听频率
+  # 监控间隔（秒）/ Monitor interval in seconds
+  # 查询支付宝账单的时间间隔
+  # Interval for querying Alipay transaction bills
+  # 建议值：3-10秒，不要设置过小以避免频繁调用API
+  # Recommended: 3-10 seconds, do not set too small to avoid frequent API calls
   interval: 5
   
-  # 监控锁超时（秒）
+  # 监控锁超时时间（秒）/ Monitor lock timeout in seconds
+  # 防止监控任务重复执行的锁定时间
+  # Lock timeout to prevent duplicate monitor task execution
+  # 建议设置为监控间隔的 5-10 倍
+  # Recommend 5-10 times of monitor interval
   lock_timeout: 300
+
+# ============================================================================
+# 配置文件结束 / End of Configuration File
+# ============================================================================
+# 
+# 更多帮助 / More Help:
+#   - 文档 / Documentation: https://github.com/chanhanzhan/AliMPay/tree/main/docs
+#   - 问题反馈 / Issues: https://github.com/chanhanzhan/AliMPay/issues
+#   - API文档 / API Docs: https://github.com/chanhanzhan/AliMPay/blob/main/docs/API.md
+#
+# ============================================================================
 
