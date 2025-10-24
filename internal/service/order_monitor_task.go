@@ -54,14 +54,33 @@ func (t *OrderMonitorTask) Execute(ctx context.Context) error {
 		return nil // 超过10分钟不再监听
 	}
 
-	// 查询支付宝账单
-	if t.monitor.billQuery == nil {
+	// 获取订单对应的账单查询服务
+	billQueryService := t.monitor.GetBillQueryServiceForOrder(currentOrder)
+	if billQueryService == nil {
 		return nil // 账单查询服务不可用
 	}
 
-	bills, err := t.monitor.queryRecentBills()
-	if err != nil {
-		return err
+	// 查询支付宝账单（使用订单对应的API）
+	var bills []BillRecord
+	if currentOrder.QRCodeID != "" {
+		// 如果订单有二维码ID，查询该二维码对应的账单
+		bills, err = t.monitor.queryRecentBillsForQRCode(currentOrder.QRCodeID)
+		if err != nil {
+			logger.Debug("Failed to query bills for QR code, fallback to default",
+				zap.String("qr_code_id", currentOrder.QRCodeID),
+				zap.Error(err))
+			// 如果失败，尝试使用默认服务
+			bills, err = t.monitor.queryRecentBills()
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		// 使用默认账单查询
+		bills, err = t.monitor.queryRecentBills()
+		if err != nil {
+			return err
+		}
 	}
 
 	// 尝试匹配账单
@@ -128,4 +147,3 @@ func (t *OrderMonitorTask) matchTraditionalModeBill(bill BillRecord) bool {
 	// 验证金额
 	return fmt.Sprintf("%.2f", bill.Amount) == fmt.Sprintf("%.2f", t.order.Price)
 }
-

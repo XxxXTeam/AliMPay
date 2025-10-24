@@ -25,7 +25,11 @@ AliMPay Golang Edition 是一个基于 Go 语言开发的高性能支付宝码�
 - 💳 **多支付模式**: 
   - 经营码收款模式（推荐）
   - 动态转账二维码模式
-  - 多二维码轮询模式（新增）
+  - **多二维码轮询模式** ⭐ 支持负载均衡
+- 🏢 **多商户支持**: 
+  - **每个二维码独立API配置** ⭐ NEW
+  - 支持多个支付宝商户账号
+  - 业务线级别隔离
 - 🔒 **安全可靠**: 
   - RSA2 签名验证
   - 防0元购保护
@@ -36,7 +40,7 @@ AliMPay Golang Edition 是一个基于 Go 语言开发的高性能支付宝码�
 - 🔄 **自动监听**: 账单查询自动匹配支付
 - 🔀 **智能轮询**: 支持多二维码轮询，提高并发处理能力
 - 📦 **独立部署**: 无需PHP环境，一键部署
-- 🐳 **容器化**: 支持Docker一键部署
+- 🐳 **容器化**: 支持Docker镜像快速部署
 - 📈 **实时监控**: 订单状态实时查询和更新
 
 ### 🏗️ 技术栈
@@ -64,6 +68,7 @@ AliMPay Golang Edition 是一个基于 Go 语言开发的高性能支付宝码�
 ### 参考文档 / Reference
 - **[📡 API 文档](docs/API.md)** - 完整的 API 接口说明
 - **[🔀 多二维码轮询](docs/MULTI_QRCODE.md)** - 多二维码轮询功能详解
+- **[🏢 多二维码独立API](docs/MULTI_QR_API.md)** - 每个二维码使用独立支付宝API配置 ⭐ NEW
 - **[❓ 常见问题](docs/FAQ.md)** - 常见问题解答
 - **[⚙️ 配置说明](configs/config.example.yaml)** - 详细的配置文件注释
 - **[🔧 易支付兼容性](EPAY_COMPATIBILITY.md)** - 易支付/码支付兼容说明
@@ -76,43 +81,25 @@ AliMPay Golang Edition 是一个基于 Go 语言开发的高性能支付宝码�
 
 ## 🚀 快速开始
 
-### 一键体验 / Quick Experience
+### 方式一：使用 Docker 镜像（推荐） 🐳
 
-**只需三步即可开始使用：**
+**最简单的方式，无需编译，开箱即用！**
 
-1. **准备支付宝配置** - 从支付宝开放平台获取 AppID 和密钥
-2. **部署 AliMPay** - 使用 Docker 或直接运行
-3. **开始接收支付** - 集成 API 到您的应用
-
-**详细步骤请查看：** [📖 快速开始指南](docs/QUICKSTART.md)
-
-### 环境要求
-
-- Go 1.23 或更高版本
-- Git (用于克隆代码)
-
-### 安装步骤
-
-#### 1. 克隆代码
+#### 1. 准备配置文件
 
 ```bash
-git clone https://github.com/chanhanzhan/alimpay.git
-cd alimpay-go
-```
+# 创建工作目录
+mkdir -p alimpay/{configs,data,logs,qrcode}
+cd alimpay
 
-#### 2. 配置文件
+# 下载配置文件模板
+wget https://raw.githubusercontent.com/chanhanzhan/AliMPay/main/configs/config.example.yaml -O configs/config.yaml
 
-```bash
-# 复制配置文件模板
-cp configs/config.example.yaml configs/config.yaml
-
-# 编辑配置文件，填写支付宝相关信息
+# 编辑配置文件
 vim configs/config.yaml
 ```
 
-**必需配置项：**
-
-详细的配置说明请查看 [配置文件注释](configs/config.example.yaml)
+配置必需项：
 
 ```yaml
 alipay:
@@ -125,71 +112,492 @@ payment:
   business_qr_mode:
     enabled: true                               # 启用经营码模式（推荐）
     qr_code_path: "./qrcode/business_qr.png"   # 经营码图片路径
-    qr_code_id: ""                              # 可选：收款码ID，用于拉起支付宝
 ```
 
-> 💡 **提示：** 配置文件包含详细的中英文注释，每个配置项都有说明和示例。
-
-#### 3. 初始化数据库
+#### 2. 放置收款二维码
 
 ```bash
-make init
+# 将您的支付宝经营码图片放到 qrcode 目录
+cp your_qrcode.png qrcode/business_qr.png
 ```
 
-#### 4. 编译运行
+#### 3. 拉取并运行镜像
 
 ```bash
-# 开发模式运行
-make dev
+# 从 GitHub Container Registry 拉取（推荐）
+docker pull ghcr.io/chanhanzhan/alimpay:latest
 
-# 或编译后运行
-make build
-./alimpay -config=./configs/config.yaml
-```
-
-#### 5. 访问系统
-
-- **支付接口**: http://localhost:8080/submit
-- **管理后台**: http://localhost:8080/admin/dashboard
-- **健康检查**: http://localhost:8080/health
-
----
-
-## 🐳 Docker 部署
-
-Docker 是最简单的部署方式，推荐生产环境使用。
-
-**详细部署教程：** [🚀 部署指南](docs/DEPLOYMENT.md)
-
-### 使用 Docker
-
-```bash
-# 构建镜像
-docker build -t alimpay:latest .
+# 或从 Docker Hub 拉取
+docker pull chanhanzhan/alimpay:latest
 
 # 运行容器
 docker run -d \
+  --name alimpay \
   -p 8080:8080 \
   -v $(pwd)/configs/config.yaml:/app/configs/config.yaml:ro \
   -v $(pwd)/data:/app/data \
   -v $(pwd)/logs:/app/logs \
-  -v $(pwd)/qrcode:/app/qrcode \
-  --name alimpay \
-  alimpay:latest
+  -v $(pwd)/qrcode:/app/qrcode:ro \
+  --restart unless-stopped \
+  ghcr.io/chanhanzhan/alimpay:latest
 ```
 
-### 使用 Docker Compose
+#### 4. 访问系统
+
+- **支付接口**: http://your-server-ip:8080/submit
+- **管理后台**: http://your-server-ip:8080/admin/dashboard
+- **健康检查**: http://your-server-ip:8080/health
+
+**查看日志**:
+```bash
+docker logs -f alimpay
+```
+
+**停止服务**:
+```bash
+docker stop alimpay
+docker rm alimpay
+```
+
+---
+
+### 方式二：使用 Docker Compose（推荐用于生产环境）
+
+Docker Compose 提供了更完整的部署方案，支持健康检查、日志管理等功能。
+
+#### 步骤 1：准备项目文件
 
 ```bash
-# 启动服务
+# 创建项目目录
+mkdir -p alimpay && cd alimpay
+
+# 下载 docker-compose.yml
+wget https://raw.githubusercontent.com/chanhanzhan/AliMPay/main/docker-compose.yml
+
+# 创建必要的目录
+mkdir -p configs data logs qrcode
+
+# 下载配置文件模板
+wget https://raw.githubusercontent.com/chanhanzhan/AliMPay/main/configs/config.example.yaml -O configs/config.yaml
+
+# 编辑配置
+vim configs/config.yaml
+```
+
+#### 步骤 2：配置文件说明
+
+项目的 `docker-compose.yml` 包含以下特性：
+
+```yaml
+version: '3.8'
+
+services:
+  alimpay:
+    image: ghcr.io/chanhanzhan/alimpay:latest
+    container_name: alimpay
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./configs/config.yaml:/app/configs/config.yaml:ro
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./qrcode:/app/qrcode
+    environment:
+      - TZ=Asia/Shanghai              # 时区设置
+      - GIN_MODE=release              # 生产模式
+    healthcheck:                       # 健康检查
+      test: ["CMD", "wget", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    logging:                           # 日志管理
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+```
+
+#### 步骤 3：启动服务
+
+```bash
+# 拉取最新镜像
+docker-compose pull
+
+# 启动服务（后台运行）
 docker-compose up -d
 
-# 查看日志
-docker-compose logs -f
+# 查看服务状态
+docker-compose ps
 
-# 停止服务
-docker-compose down
+# 查看实时日志
+docker-compose logs -f alimpay
+
+# 查看最近100行日志
+docker-compose logs --tail=100 alimpay
 ```
+
+#### 步骤 4：管理服务
+
+```bash
+# 停止服务
+docker-compose stop
+
+# 启动服务
+docker-compose start
+
+# 重启服务
+docker-compose restart
+
+# 停止并删除容器
+docker-compose down
+
+# 停止并删除容器及数据卷
+docker-compose down -v
+```
+
+#### 可选：启用 Redis 缓存
+
+项目支持可选的 Redis 缓存服务：
+
+```bash
+# 使用 Redis profile 启动
+docker-compose --profile with-redis up -d
+
+# 查看 Redis 状态
+docker-compose ps redis
+```
+
+#### 升级到新版本
+
+```bash
+# 拉取新镜像
+docker-compose pull
+
+# 重启服务
+docker-compose up -d
+
+# 查看日志确认启动成功
+docker-compose logs -f
+```
+
+---
+
+### 方式三：本地编译部署
+
+适合需要自定义修改或开发的用户。
+
+#### 环境要求
+
+| 依赖 | 版本要求 | 用途 | 安装检查 |
+|------|----------|------|----------|
+| **Go** | 1.23+ | 编译和运行 | `go version` |
+| **Git** | 2.0+ | 克隆代码 | `git --version` |
+| **Make** | 3.8+ | 构建工具 | `make --version` |
+| **GCC** | 可选 | CGO 编译 SQLite | `gcc --version` |
+
+#### 步骤 1：安装依赖
+
+<details>
+<summary><b>Linux (Ubuntu/Debian)</b></summary>
+
+```bash
+# 更新软件包列表
+sudo apt update
+
+# 安装 Go（如未安装）
+wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+echo 'export GOPATH=$HOME/go' >> ~/.bashrc
+source ~/.bashrc
+
+# 安装其他依赖
+sudo apt install -y git make gcc
+
+# 验证安装
+go version
+git --version
+make --version
+```
+
+</details>
+
+<details>
+<summary><b>Linux (CentOS/RHEL)</b></summary>
+
+```bash
+# 安装 Go
+sudo yum install -y golang
+
+# 或手动安装最新版本
+wget https://go.dev/dl/go1.23.0.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.23.0.linux-amd64.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+
+# 安装其他依赖
+sudo yum install -y git make gcc
+
+# 验证安装
+go version
+```
+
+</details>
+
+<details>
+<summary><b>macOS</b></summary>
+
+```bash
+# 使用 Homebrew 安装（推荐）
+brew install go git
+
+# 或下载安装包
+# 访问 https://go.dev/dl/ 下载 macOS 安装包
+
+# 验证安装
+go version
+git --version
+make --version  # macOS 自带 make
+```
+
+</details>
+
+<details>
+<summary><b>Windows</b></summary>
+
+```powershell
+# 1. 下载 Go 安装包
+# 访问 https://go.dev/dl/ 下载 Windows 安装包并安装
+
+# 2. 安装 Git
+# 访问 https://git-scm.com/download/win 下载并安装
+
+# 3. 安装 Make（可选）
+# 下载 GnuWin32 Make: http://gnuwin32.sourceforge.net/packages/make.htm
+# 或使用 Chocolatey: choco install make
+
+# 4. 验证安装
+go version
+git --version
+make --version
+```
+
+</details>
+
+#### 步骤 2：配置 Go 环境
+
+```bash
+# 配置 Go 模块代理（加速依赖下载）
+go env -w GO111MODULE=on
+go env -w GOPROXY=https://goproxy.cn,direct
+
+# 查看 Go 环境配置
+go env
+```
+
+#### 步骤 3：克隆代码
+
+```bash
+# 克隆仓库
+git clone https://github.com/chanhanzhan/AliMPay.git
+cd AliMPay
+
+# 查看项目结构
+tree -L 2  # 或 ls -la
+```
+
+#### 步骤 4：安装项目依赖
+
+```bash
+# 下载 Go 模块依赖
+go mod download
+
+# 验证依赖完整性
+go mod verify
+
+# 查看依赖列表
+go list -m all
+```
+
+#### 步骤 5：配置应用
+
+```bash
+# 复制配置文件模板
+cp configs/config.example.yaml configs/config.yaml
+
+# 编辑配置（填写支付宝API信息）
+vim configs/config.yaml
+# 或使用其他编辑器：nano、code、gedit 等
+
+# 准备二维码目录
+mkdir -p qrcode
+# 将您的支付宝收款码图片放到 qrcode/ 目录
+```
+
+#### 步骤 6：编译和运行
+
+##### 方式 A：使用 Make（推荐）
+
+```bash
+# 查看可用命令
+make help
+
+# 开发模式运行（自动重启）
+make dev
+
+# 构建生产版本
+make build
+
+# 运行编译后的程序
+./alimpay -config=./configs/config.yaml
+
+# 其他有用的命令
+make test          # 运行测试
+make lint          # 代码检查
+make clean         # 清理编译文件
+```
+
+##### 方式 B：直接使用 Go 命令
+
+```bash
+# 开发模式运行
+go run ./cmd/alimpay -config=./configs/config.yaml
+
+# 编译
+go build -o alimpay ./cmd/alimpay
+
+# 运行
+./alimpay -config=./configs/config.yaml
+
+# 交叉编译（Linux）
+GOOS=linux GOARCH=amd64 go build -o alimpay-linux-amd64 ./cmd/alimpay
+
+# 交叉编译（Windows）
+GOOS=windows GOARCH=amd64 go build -o alimpay-windows-amd64.exe ./cmd/alimpay
+
+# 交叉编译（macOS）
+GOOS=darwin GOARCH=amd64 go build -o alimpay-darwin-amd64 ./cmd/alimpay
+```
+
+#### 步骤 7：验证运行
+
+```bash
+# 访问健康检查接口
+curl http://localhost:8080/health
+
+# 查看日志
+tail -f logs/alimpay.log
+
+# 访问管理后台
+open http://localhost:8080/admin/dashboard
+# 或在浏览器中打开 http://localhost:8080/admin/dashboard
+```
+
+#### 开发工具推荐
+
+- **IDE**: 
+  - [GoLand](https://www.jetbrains.com/go/) - JetBrains 专业 Go IDE
+  - [VS Code](https://code.visualstudio.com/) + [Go 插件](https://marketplace.visualstudio.com/items?itemName=golang.go)
+  
+- **调试工具**:
+  - [Delve](https://github.com/go-delve/delve) - Go 调试器
+
+- **代码检查**:
+  - [golangci-lint](https://golangci-lint.run/) - 代码质量检查
+
+#### 常见问题
+
+<details>
+<summary>依赖下载失败？</summary>
+
+```bash
+# 尝试使用国内镜像
+go env -w GOPROXY=https://goproxy.cn,direct
+
+# 或使用阿里云镜像
+go env -w GOPROXY=https://mirrors.aliyun.com/goproxy/,direct
+```
+
+</details>
+
+<details>
+<summary>CGO 相关错误？</summary>
+
+```bash
+# 如果不需要 CGO，可以禁用
+CGO_ENABLED=0 go build ./cmd/alimpay
+
+# 或在 Linux 上安装 GCC
+sudo apt install build-essential  # Ubuntu/Debian
+sudo yum groupinstall "Development Tools"  # CentOS/RHEL
+```
+
+</details>
+
+<details>
+<summary>端口被占用？</summary>
+
+```bash
+# Linux/macOS
+sudo lsof -i :8080
+sudo kill -9 <PID>
+
+# 或修改配置文件中的端口
+vim configs/config.yaml
+# server.port: 8080 -> server.port: 8081
+```
+
+</details>
+
+**详细开发指南：** [📖 快速开始指南](docs/QUICKSTART.md) | [🤝 贡献指南](CONTRIBUTING.md)
+
+---
+
+## 🐳 Docker 镜像源
+
+### 官方镜像仓库
+
+| 镜像源 | 拉取命令 | 说明 |
+|--------|----------|------|
+| **GitHub Container Registry (GHCR)** | `docker pull ghcr.io/chanhanzhan/alimpay:latest` | 官方镜像仓库 ⭐ |
+
+> 💡 **提示：** 我们使用 GitHub Container Registry 作为官方镜像仓库，提供稳定可靠的镜像服务。
+
+### 可用标签
+
+| 标签 | 说明 | 示例 |
+|------|------|------|
+| `latest` | 最新稳定版（main 分支） | `ghcr.io/chanhanzhan/alimpay:latest` |
+| `v{version}` | 指定版本号 | `ghcr.io/chanhanzhan/alimpay:v1.1.0` |
+| `v{major}.{minor}` | 主次版本号 | `ghcr.io/chanhanzhan/alimpay:v1.1` |
+| `v{major}` | 主版本号 | `ghcr.io/chanhanzhan/alimpay:v1` |
+| `{branch}-{sha}` | 分支+提交SHA | `ghcr.io/chanhanzhan/alimpay:main-abc123` |
+
+### 镜像架构支持
+
+- ✅ **linux/amd64** - x86_64 架构（常见服务器）
+- ✅ **linux/arm64** - ARM64 架构（树莓派、ARM 服务器）
+
+Docker 会自动选择与您系统匹配的架构。
+
+### 镜像信息
+
+```bash
+# 查看镜像详细信息
+docker image inspect ghcr.io/chanhanzhan/alimpay:latest
+
+# 查看镜像架构
+docker manifest inspect ghcr.io/chanhanzhan/alimpay:latest
+
+# 查看本地镜像
+docker images | grep alimpay
+
+# 拉取指定架构的镜像
+docker pull --platform linux/amd64 ghcr.io/chanhanzhan/alimpay:latest
+```
+
+**详细部署教程：** [🚀 部署指南](docs/DEPLOYMENT.md)
 
 ---
 
@@ -479,7 +887,78 @@ docker-compose logs -f alimpay
 
 ---
 
+## 🆕 新功能亮点
+
+### 多二维码独立API配置 ⭐ NEW
+
+**现在每个二维码可以配置独立的支付宝API！**
+
+这意味着您可以：
+- 🏢 使用多个支付宝商户账号
+- 💼 不同业务线使用不同的支付账号
+- ⚖️ 分散支付流量，降低单账号风险
+- 🛡️ 实现账号级别的业务隔离
+
+**配置示例**：
+
+```yaml
+payment:
+  business_qr_mode:
+    enabled: true
+    qr_code_paths:
+      # 商户A - 使用独立API
+      - id: "merchant_a"
+        path: "./qrcode/qr_a.png"
+        code_id: "fkx111111"
+        enabled: true
+        priority: 1
+        alipay_api:                    # ⭐ 独立API配置
+          app_id: "2021001111111111"
+          private_key: "..."
+          alipay_public_key: "..."
+          transfer_user_id: "2088111111111111"
+      
+      # 商户B - 使用全局配置
+      - id: "merchant_b"
+        path: "./qrcode/qr_b.png"
+        code_id: "fkx222222"
+        enabled: true
+        priority: 2
+        # 不配置 alipay_api，使用全局配置
+```
+
+**特性**：
+- ✅ 智能配置合并（缺失字段自动补充）
+- ✅ 自动服务创建（启动时自动识别）
+- ✅ 订单级别匹配（每个订单使用对应API）
+- ✅ 向后兼容（现有配置无需修改）
+
+**详细文档**：
+- [🏢 多二维码独立API配置指南](docs/MULTI_QR_API.md) - 完整的配置说明和使用案例
+- [✨ 功能特性说明](FEATURE_MULTI_API.md) - 快速了解新功能
+- [📋 更新日志](CHANGELOG_MULTI_API.md) - 详细的技术实现
+
+---
+
 ## 📝 更新日志
+
+### v1.1.0 (2024-10-24) 🎉
+
+**新增功能**：
+- ✨ **多二维码独立API配置** - 每个二维码可使用独立的支付宝API
+- 🏢 **多商户账号支持** - 支持多个支付宝商户账号同时运行
+- 🔍 **智能配置合并** - 自动合并全局和独立配置
+- 📊 **订单级API匹配** - 每个订单自动使用对应的API查询
+
+**功能增强**：
+- 🚀 监控服务支持多API账单查询
+- 📈 订单监听任务支持降级容错
+- 📖 完善的配置文档和示例
+
+**配置文件**：
+- 新增 `configs/config.multi_api.example.yaml` - 多API配置示例
+- 新增 `docs/MULTI_QR_API.md` - 详细配置指南
+- 更新 `configs/config.example.yaml` - 添加独立API配置说明
 
 ### v1.0.0 (2024-01-15)
 

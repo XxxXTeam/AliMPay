@@ -65,23 +65,38 @@ type PaymentConfig struct {
 
 // BusinessQRMode 经营码收款模式配置
 type BusinessQRMode struct {
-	Enabled        bool       `yaml:"enabled"`
-	QRCodePath     string     `yaml:"qr_code_path"`     // 单个二维码路径（向后兼容）
-	QRCodePaths    []QRCode   `yaml:"qr_code_paths"`    // 多个二维码配置
-	QRCodeID       string     `yaml:"qr_code_id"`       // 支付宝收款码ID，用于手机端拉起支付宝（单个模式）
-	AmountOffset   float64    `yaml:"amount_offset"`
-	MatchTolerance int        `yaml:"match_tolerance"`
-	PaymentTimeout int        `yaml:"payment_timeout"`
-	PollingMode    string     `yaml:"polling_mode"`     // 轮询模式: round_robin, random, least_used
+	Enabled        bool     `yaml:"enabled"`
+	QRCodePath     string   `yaml:"qr_code_path"`  // 单个二维码路径（向后兼容）
+	QRCodePaths    []QRCode `yaml:"qr_code_paths"` // 多个二维码配置
+	QRCodeID       string   `yaml:"qr_code_id"`    // 支付宝收款码ID，用于手机端拉起支付宝（单个模式）
+	AmountOffset   float64  `yaml:"amount_offset"`
+	MatchTolerance int      `yaml:"match_tolerance"`
+	PaymentTimeout int      `yaml:"payment_timeout"`
+	PollingMode    string   `yaml:"polling_mode"` // 轮询模式: round_robin, random, least_used
 }
 
 // QRCode 二维码配置
 type QRCode struct {
-	ID       string `yaml:"id"`         // 二维码唯一标识
-	Path     string `yaml:"path"`       // 二维码图片路径
-	CodeID   string `yaml:"code_id"`    // 支付宝收款码ID
-	Enabled  bool   `yaml:"enabled"`    // 是否启用
-	Priority int    `yaml:"priority"`   // 优先级（数字越小优先级越高）
+	ID       string `yaml:"id"`       // 二维码唯一标识
+	Path     string `yaml:"path"`     // 二维码图片路径
+	CodeID   string `yaml:"code_id"`  // 支付宝收款码ID
+	Enabled  bool   `yaml:"enabled"`  // 是否启用
+	Priority int    `yaml:"priority"` // 优先级（数字越小优先级越高）
+
+	// 独立的支付宝API配置（可选，为空则使用全局配置）
+	AlipayAPI *QRCodeAlipayConfig `yaml:"alipay_api,omitempty"`
+}
+
+// QRCodeAlipayConfig 二维码专属的支付宝API配置
+type QRCodeAlipayConfig struct {
+	ServerURL       string `yaml:"server_url,omitempty"`        // 支付宝网关
+	AppID           string `yaml:"app_id,omitempty"`            // 应用ID
+	PrivateKey      string `yaml:"private_key,omitempty"`       // 应用私钥
+	AlipayPublicKey string `yaml:"alipay_public_key,omitempty"` // 支付宝公钥
+	TransferUserID  string `yaml:"transfer_user_id,omitempty"`  // 转账用户ID
+	SignType        string `yaml:"sign_type,omitempty"`         // 签名类型
+	Charset         string `yaml:"charset,omitempty"`           // 字符集
+	Format          string `yaml:"format,omitempty"`            // 格式
 }
 
 // AntiRiskURLConfig 防风控URL配置
@@ -252,4 +267,57 @@ func Save(cfg *Config, configPath string) error {
 	}
 
 	return nil
+}
+
+// GetEffectiveAlipayConfig 获取二维码的有效支付宝配置（如果二维码有独立配置则使用，否则使用全局配置）
+func (qr *QRCode) GetEffectiveAlipayConfig(globalConfig *AlipayConfig) *AlipayConfig {
+	// 如果没有独立配置，直接返回全局配置
+	if qr.AlipayAPI == nil {
+		return globalConfig
+	}
+
+	// 创建合并后的配置（二维码配置优先，缺失部分使用全局配置）
+	merged := &AlipayConfig{
+		ServerURL:       qr.AlipayAPI.ServerURL,
+		AppID:           qr.AlipayAPI.AppID,
+		PrivateKey:      qr.AlipayAPI.PrivateKey,
+		AlipayPublicKey: qr.AlipayAPI.AlipayPublicKey,
+		TransferUserID:  qr.AlipayAPI.TransferUserID,
+		SignType:        qr.AlipayAPI.SignType,
+		Charset:         qr.AlipayAPI.Charset,
+		Format:          qr.AlipayAPI.Format,
+	}
+
+	// 填充缺失的字段
+	if merged.ServerURL == "" {
+		merged.ServerURL = globalConfig.ServerURL
+	}
+	if merged.AppID == "" {
+		merged.AppID = globalConfig.AppID
+	}
+	if merged.PrivateKey == "" {
+		merged.PrivateKey = globalConfig.PrivateKey
+	}
+	if merged.AlipayPublicKey == "" {
+		merged.AlipayPublicKey = globalConfig.AlipayPublicKey
+	}
+	if merged.TransferUserID == "" {
+		merged.TransferUserID = globalConfig.TransferUserID
+	}
+	if merged.SignType == "" {
+		merged.SignType = globalConfig.SignType
+	}
+	if merged.Charset == "" {
+		merged.Charset = globalConfig.Charset
+	}
+	if merged.Format == "" {
+		merged.Format = globalConfig.Format
+	}
+
+	return merged
+}
+
+// HasIndependentAPI 检查二维码是否配置了独立的API
+func (qr *QRCode) HasIndependentAPI() bool {
+	return qr.AlipayAPI != nil && qr.AlipayAPI.AppID != ""
 }

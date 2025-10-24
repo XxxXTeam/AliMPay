@@ -4,15 +4,100 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+env:
+  GO_VERSION: '1.23'
+
 jobs:
-  release:
-    name: Create Release
+  # 创建发布版本
+  create-release:
+    name: 创建发布
     runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get version
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_name=${VERSION#v}" >> $GITHUB_OUTPUT
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          CHANGELOG=$(git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s" --no-merges)
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            ## 🎉 AliMPay ${{ steps.version.outputs.version }}
+            
+            ### 📦 下载
+            
+            选择适合您系统的版本下载：
+            
+            - **Linux (amd64)**: `alimpay-linux-amd64.tar.gz`
+            - **Linux (arm64)**: `alimpay-linux-arm64.tar.gz`
+            - **macOS (Intel)**: `alimpay-darwin-amd64.tar.gz`
+            - **macOS (Apple Silicon)**: `alimpay-darwin-arm64.tar.gz`
+            - **Windows (amd64)**: `alimpay-windows-amd64.zip`
+            
+            ### 📝 更新日志
+            
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ### 🚀 快速开始
+            
+            ```bash
+            # 下载并解压
+            tar -xzf alimpay-linux-amd64.tar.gz
+            
+            # 运行
+            ./alimpay-linux-amd64 -config=./configs/config.yaml
+            ```
+            
+            ### 📖 文档
+            
+            - [快速开始](https://github.com/${{ github.repository }}/blob/main/docs/QUICKSTART.md)
+            - [部署指南](https://github.com/${{ github.repository }}/blob/main/docs/DEPLOYMENT.md)
+            - [API 文档](https://github.com/${{ github.repository }}/blob/main/docs/API.md)
+            
+            ### 🐳 Docker 镜像
+            
+            ```bash
+            docker pull ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+            docker pull ghcr.io/${{ github.repository }}:latest
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # 构建多平台二进制文件
+  build-release:
+    name: 构建 ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    needs: create-release
     strategy:
+      fail-fast: false
       matrix:
         include:
           - goos: linux
@@ -26,25 +111,29 @@ jobs:
           - goos: windows
             goarch: amd64
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
       
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: ${{ env.GO_VERSION }}
           cache: true
       
-      - name: Get version
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      - name: Get build info
+        id: build_info
+        run: |
+          echo "commit=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "build_time=$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
       
-      - name: Build
+      - name: Build binary
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          CGO_ENABLED: 0
+          VERSION: ${{ needs.create-release.outputs.version }}
         run: |
           mkdir -p dist
           BINARY_NAME="alimpay-${{ matrix.goos }}-${{ matrix.goarch }}"
@@ -52,18 +141,33 @@ jobs:
             BINARY_NAME="${BINARY_NAME}.exe"
           fi
           
-          go build \
-            -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          go build -v \
+            -trimpath \
+            -ldflags="-s -w -X main.Version=${VERSION} -X main.Commit=${{ steps.build_info.outputs.commit }} -X main.BuildTime=${{ steps.build_info.outputs.build_time }}" \
             -o "dist/${BINARY_NAME}" \
             ./cmd/alimpay
           
-          # 创建压缩包
+          # 显示文件信息
+          ls -lh dist/${BINARY_NAME}
+          file dist/${BINARY_NAME} || true
+      
+      - name: Create archive
+        run: |
           cd dist
-          if [ "$GOOS" = "windows" ]; then
-            zip "${BINARY_NAME%.exe}.zip" "${BINARY_NAME}"
+          BINARY_NAME="alimpay-${{ matrix.goos }}-${{ matrix.goarch }}"
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            BINARY_NAME="${BINARY_NAME}.exe"
+            ARCHIVE_NAME="${BINARY_NAME%.exe}.zip"
+            zip "${ARCHIVE_NAME}" "${BINARY_NAME}"
           else
-            tar czf "${BINARY_NAME}.tar.gz" "${BINARY_NAME}"
+            ARCHIVE_NAME="${BINARY_NAME}.tar.gz"
+            tar czf "${ARCHIVE_NAME}" "${BINARY_NAME}"
           fi
+          
+          # 计算校验和
+          sha256sum "${ARCHIVE_NAME}" > "${ARCHIVE_NAME}.sha256"
+          
+          ls -lh
       
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
@@ -71,8 +175,33 @@ jobs:
           files: |
             dist/*.tar.gz
             dist/*.zip
-          draft: false
-          prerelease: false
+            dist/*.sha256
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
+  # 生成发布摘要
+  release-summary:
+    name: 发布摘要
+    runs-on: ubuntu-latest
+    needs: [create-release, build-release]
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 🎉 版本发布成功" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 发布版本" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**版本号:** ${{ needs.create-release.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🚀 已构建平台" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Linux (amd64)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Linux (arm64)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ macOS (amd64)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ macOS (arm64)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Windows (amd64)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📖 发布链接" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[查看发布详情](https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.version }})" >> $GITHUB_STEP_SUMMARY
 

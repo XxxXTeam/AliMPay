@@ -35,7 +35,8 @@ type MonitorService struct {
 	cfg              *config.Config
 	db               *database.DB
 	codepay          *CodePayService
-	billQuery        *BillQueryService
+	billQuery        *BillQueryService            // 默认账单查询服务（使用全局配置）
+	qrBillQueries    map[string]*BillQueryService // 二维码专属的账单查询服务 (qr_id -> service)
 	workerPool       *worker.Pool
 	cron             *cron.Cron
 	lockFile         string
@@ -53,11 +54,36 @@ type MonitorService struct {
 // @return *MonitorService 监听服务实例
 // @return error 创建错误
 func NewMonitorService(cfg *config.Config, db *database.DB, codepay *CodePayService) (*MonitorService, error) {
-	// 创建账单查询服务
+	// 创建默认账单查询服务（使用全局配置）
 	billQuery, err := NewBillQueryService(&cfg.Alipay)
 	if err != nil {
 		logger.Warn("Failed to create bill query service, monitoring will be limited", zap.Error(err))
 		billQuery = nil
+	}
+
+	// 为配置了独立API的二维码创建专属的账单查询服务
+	qrBillQueries := make(map[string]*BillQueryService)
+	if cfg.Payment.BusinessQRMode.Enabled && len(cfg.Payment.BusinessQRMode.QRCodePaths) > 0 {
+		for _, qrCode := range cfg.Payment.BusinessQRMode.QRCodePaths {
+			if qrCode.HasIndependentAPI() {
+				// 获取该二维码的有效配置
+				qrAlipayConfig := qrCode.GetEffectiveAlipayConfig(&cfg.Alipay)
+
+				// 创建专属的账单查询服务
+				qrBillQuery, err := NewBillQueryService(qrAlipayConfig)
+				if err != nil {
+					logger.Warn("Failed to create bill query service for QR code",
+						zap.String("qr_id", qrCode.ID),
+						zap.Error(err))
+					continue
+				}
+
+				qrBillQueries[qrCode.ID] = qrBillQuery
+				logger.Info("Created independent bill query service for QR code",
+					zap.String("qr_id", qrCode.ID),
+					zap.String("app_id", qrAlipayConfig.AppID))
+			}
+		}
 	}
 
 	// 创建Worker池 - 使用固定数量的Worker避免创建过多goroutine
@@ -66,12 +92,13 @@ func NewMonitorService(cfg *config.Config, db *database.DB, codepay *CodePayServ
 	workerPool := worker.NewPool(5, 100)
 
 	return &MonitorService{
-		cfg:        cfg,
-		db:         db,
-		codepay:    codepay,
-		billQuery:  billQuery,
-		workerPool: workerPool,
-		lockFile:   "./data/monitor.lock",
+		cfg:           cfg,
+		db:            db,
+		codepay:       codepay,
+		billQuery:     billQuery,
+		qrBillQueries: qrBillQueries,
+		workerPool:    workerPool,
+		lockFile:      "./data/monitor.lock",
 	}, nil
 }
 
@@ -198,7 +225,26 @@ func (m *MonitorService) RunMonitoringCycle() {
 	}
 }
 
-// queryRecentBills 查询最近的账单
+// GetBillQueryServiceForOrder 获取订单对应的账单查询服务
+// @description 根据订单的二维码ID返回对应的账单查询服务
+// @param order 订单
+// @return *BillQueryService 账单查询服务
+func (m *MonitorService) GetBillQueryServiceForOrder(order *model.Order) *BillQueryService {
+	// 如果订单有分配的二维码ID，尝试使用对应的专属服务
+	if order.QRCodeID != "" {
+		if qrBillQuery, exists := m.qrBillQueries[order.QRCodeID]; exists {
+			logger.Debug("Using QR code specific bill query service",
+				zap.String("order_id", order.ID),
+				zap.String("qr_code_id", order.QRCodeID))
+			return qrBillQuery
+		}
+	}
+
+	// 否则使用默认服务
+	return m.billQuery
+}
+
+// queryRecentBills 查询最近的账单（使用默认服务）
 // @description 从支付宝查询最近的收入账单
 // @return []BillRecord 账单列表
 // @return error 查询错误
@@ -268,6 +314,72 @@ func (m *MonitorService) queryRecentBills() ([]BillRecord, error) {
 		}
 		bills = append(bills, bill)
 	}
+
+	return bills, nil
+}
+
+// queryRecentBillsForQRCode 查询特定二维码的最近账单
+// @description 使用二维码专属的API查询账单
+// @param qrCodeID 二维码ID
+// @return []BillRecord 账单列表
+// @return error 查询错误
+func (m *MonitorService) queryRecentBillsForQRCode(qrCodeID string) ([]BillRecord, error) {
+	// 获取二维码专属的账单查询服务
+	qrBillQuery, exists := m.qrBillQueries[qrCodeID]
+	if !exists {
+		// 如果没有专属服务，使用默认服务
+		return m.queryRecentBills()
+	}
+
+	// 查询最近1小时的账单
+	result, err := qrBillQuery.QueryRecentBills(1)
+	if err != nil {
+		logger.Error("Failed to query bills for QR code",
+			zap.String("qr_code_id", qrCodeID),
+			zap.Error(err))
+		return []BillRecord{}, err
+	}
+
+	// 解析账单数据
+	success, _ := result["success"].(bool)
+	if !success {
+		return []BillRecord{}, nil
+	}
+
+	data, ok := result["data"].(map[string]interface{})
+	if !ok {
+		return []BillRecord{}, nil
+	}
+
+	detailList, ok := data["detail_list"].([]map[string]interface{})
+	if !ok {
+		return []BillRecord{}, nil
+	}
+
+	var bills []BillRecord
+	for _, detail := range detailList {
+		direction, _ := detail["direction"].(string)
+		if direction != "收入" {
+			continue
+		}
+
+		amountStr, _ := detail["trans_amount"].(string)
+		var amount float64
+		fmt.Sscanf(amountStr, "%f", &amount)
+
+		bill := BillRecord{
+			TradeNo:   detail["alipay_order_no"].(string),
+			Amount:    amount,
+			Remark:    detail["trans_memo"].(string),
+			TransDate: detail["trans_dt"].(string),
+			Direction: direction,
+		}
+		bills = append(bills, bill)
+	}
+
+	logger.Debug("Queried bills for QR code",
+		zap.String("qr_code_id", qrCodeID),
+		zap.Int("bill_count", len(bills)))
 
 	return bills, nil
 }
