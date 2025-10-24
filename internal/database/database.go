@@ -124,12 +124,17 @@ func (db *DB) initTables() error {
 		pay_time DATETIME,
 		notify_url VARCHAR(255),
 		return_url VARCHAR(255),
-		sitename VARCHAR(255)
+		sitename VARCHAR(255),
+		qr_code_id VARCHAR(32) DEFAULT ''
 	);`
 
 	if _, err := db.Exec(createOrderTableSQL); err != nil {
 		return fmt.Errorf("failed to create orders table: %w", err)
 	}
+
+	// 为已存在的表添加qr_code_id列（如果不存在）
+	addColumnSQL := `ALTER TABLE codepay_orders ADD COLUMN qr_code_id VARCHAR(32) DEFAULT '';`
+	_, _ = db.Exec(addColumnSQL) // 忽略错误，因为列可能已存在
 
 	// 创建索引
 	indexes := []string{
@@ -137,6 +142,7 @@ func (db *DB) initTables() error {
 		"CREATE INDEX IF NOT EXISTS idx_status ON codepay_orders(status);",
 		"CREATE INDEX IF NOT EXISTS idx_payment_amount ON codepay_orders(payment_amount);",
 		"CREATE INDEX IF NOT EXISTS idx_add_time ON codepay_orders(add_time);",
+		"CREATE INDEX IF NOT EXISTS idx_qr_code_id ON codepay_orders(qr_code_id);",
 	}
 
 	for _, indexSQL := range indexes {
@@ -154,14 +160,14 @@ func (db *DB) CreateOrder(order *model.Order) error {
 	query := `
 		INSERT INTO codepay_orders (
 			id, out_trade_no, type, pid, name, price, payment_amount,
-			status, add_time, notify_url, return_url, sitename
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			status, add_time, notify_url, return_url, sitename, qr_code_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err := db.Exec(query,
 		order.ID, order.OutTradeNo, order.Type, order.PID, order.Name,
 		order.Price, order.PaymentAmount, order.Status, order.AddTime,
-		order.NotifyURL, order.ReturnURL, order.Sitename,
+		order.NotifyURL, order.ReturnURL, order.Sitename, order.QRCodeID,
 	)
 
 	if err != nil {
@@ -176,7 +182,7 @@ func (db *DB) CreateOrder(order *model.Order) error {
 func (db *DB) GetOrderByOutTradeNo(outTradeNo, pid string) (*model.Order, error) {
 	query := `
 		SELECT id, out_trade_no, type, pid, name, price, payment_amount,
-		       status, add_time, pay_time, notify_url, return_url, sitename
+		       status, add_time, pay_time, notify_url, return_url, sitename, qr_code_id
 		FROM codepay_orders
 		WHERE out_trade_no = ? AND pid = ?
 	`
@@ -187,7 +193,7 @@ func (db *DB) GetOrderByOutTradeNo(outTradeNo, pid string) (*model.Order, error)
 	err := db.QueryRow(query, outTradeNo, pid).Scan(
 		&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 		&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-		&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,
+		&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 	)
 
 	if err == sql.ErrNoRows {
@@ -208,7 +214,7 @@ func (db *DB) GetOrderByOutTradeNo(outTradeNo, pid string) (*model.Order, error)
 func (db *DB) GetOrderByID(id string) (*model.Order, error) {
 	query := `
 		SELECT id, out_trade_no, type, pid, name, price, payment_amount,
-		       status, add_time, pay_time, notify_url, return_url, sitename
+		       status, add_time, pay_time, notify_url, return_url, sitename, qr_code_id
 		FROM codepay_orders
 		WHERE id = ?
 	`
@@ -219,7 +225,7 @@ func (db *DB) GetOrderByID(id string) (*model.Order, error) {
 	err := db.QueryRow(query, id).Scan(
 		&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 		&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-		&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,
+		&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 	)
 
 	if err == sql.ErrNoRows {
@@ -240,7 +246,7 @@ func (db *DB) GetOrderByID(id string) (*model.Order, error) {
 func (db *DB) GetPendingOrderByAmount(amount float64) (*model.Order, error) {
 	query := `
 		SELECT id, out_trade_no, type, pid, name, price, payment_amount,
-		       status, add_time, pay_time, notify_url, return_url, sitename
+		       status, add_time, pay_time, notify_url, return_url, sitename, qr_code_id
 		FROM codepay_orders
 		WHERE payment_amount = ? AND status = ?
 		ORDER BY add_time ASC
@@ -253,7 +259,7 @@ func (db *DB) GetPendingOrderByAmount(amount float64) (*model.Order, error) {
 	err := db.QueryRow(query, amount, model.OrderStatusPending).Scan(
 		&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 		&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-		&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,
+		&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 	)
 
 	if err == sql.ErrNoRows {
@@ -312,7 +318,7 @@ func (db *DB) UpdateOrderStatus(id string, status int, payTime time.Time) error 
 func (db *DB) GetOrders(pid string, limit int) ([]*model.Order, error) {
 	query := `
 		SELECT id, out_trade_no, type, pid, name, price, payment_amount,
-		       status, add_time, pay_time, notify_url, return_url, sitename
+		       status, add_time, pay_time, notify_url, return_url, sitename, qr_code_id
 		FROM codepay_orders
 		WHERE pid = ?
 		ORDER BY add_time DESC
@@ -333,7 +339,7 @@ func (db *DB) GetOrders(pid string, limit int) ([]*model.Order, error) {
 		err := rows.Scan(
 			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
@@ -359,7 +365,7 @@ GetOrdersByStatus 根据状态获取订单列表
 func (db *DB) GetOrdersByStatus(status int) ([]*model.Order, error) {
 	query := `
 		SELECT id, out_trade_no, type, pid, name, price, payment_amount,
-		       status, add_time, pay_time, notify_url, return_url, sitename
+		       status, add_time, pay_time, notify_url, return_url, sitename, qr_code_id
 		FROM codepay_orders
 		WHERE status = ?
 		ORDER BY add_time DESC
@@ -379,7 +385,7 @@ func (db *DB) GetOrdersByStatus(status int) ([]*model.Order, error) {
 		err := rows.Scan(
 			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
@@ -409,7 +415,7 @@ GetTodayOrdersByStatus 获取今日指定状态的订单
 func (db *DB) GetTodayOrdersByStatus(status int) ([]*model.Order, error) {
 	query := `
 		SELECT id, out_trade_no, type, pid, name, price, payment_amount,
-		       status, add_time, pay_time, notify_url, return_url, sitename
+		       status, add_time, pay_time, notify_url, return_url, sitename, qr_code_id
 		FROM codepay_orders
 		WHERE status = ? AND DATE(add_time) = DATE('now', 'localtime')
 		ORDER BY add_time DESC
@@ -429,7 +435,7 @@ func (db *DB) GetTodayOrdersByStatus(status int) ([]*model.Order, error) {
 		err := rows.Scan(
 			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
@@ -494,7 +500,7 @@ func (db *DB) CountOrders(status *int) (int, error) {
 func (db *DB) GetRecentOrders(limit int) ([]*model.Order, error) {
 	query := `
 		SELECT id, out_trade_no, type, pid, name, price, payment_amount,
-		       status, add_time, pay_time, notify_url, return_url, sitename
+		       status, add_time, pay_time, notify_url, return_url, sitename, qr_code_id
 		FROM codepay_orders
 		ORDER BY add_time DESC
 		LIMIT ?
@@ -514,7 +520,7 @@ func (db *DB) GetRecentOrders(limit int) ([]*model.Order, error) {
 		err := rows.Scan(
 			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
@@ -534,7 +540,7 @@ func (db *DB) GetRecentOrders(limit int) ([]*model.Order, error) {
 func (db *DB) GetPendingOrdersSince(since time.Time) ([]*model.Order, error) {
 	query := `
 		SELECT id, out_trade_no, type, pid, name, price, payment_amount,
-		       status, add_time, pay_time, notify_url, return_url, sitename
+		       status, add_time, pay_time, notify_url, return_url, sitename, qr_code_id
 		FROM codepay_orders
 		WHERE status = ? AND add_time >= ?
 		ORDER BY add_time DESC
@@ -554,7 +560,7 @@ func (db *DB) GetPendingOrdersSince(since time.Time) ([]*model.Order, error) {
 		err := rows.Scan(
 			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename,payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)

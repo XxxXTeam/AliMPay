@@ -29,6 +29,7 @@ type CodePayService struct {
 	merchantID   string
 	alipayClient *AlipayClient
 	merchantKey  string
+	qrSelector   *QRCodeSelector
 }
 
 // NewCodePayService 创建码支付服务
@@ -39,12 +40,19 @@ func NewCodePayService(cfg *config.Config, db *database.DB) (*CodePayService, er
 		return nil, fmt.Errorf("failed to create alipay client: %w", err)
 	}
 
+	// 创建二维码选择器（仅在多二维码模式下）
+	var qrSelector *QRCodeSelector
+	if cfg.Payment.BusinessQRMode.Enabled && len(cfg.Payment.BusinessQRMode.QRCodePaths) > 1 {
+		qrSelector = NewQRCodeSelector(cfg)
+	}
+
 	service := &CodePayService{
 		cfg:          cfg,
 		db:           db,
 		transfer:     NewAlipayTransfer(&cfg.Alipay),
 		qrGenerator:  qrcode.NewGenerator(cfg.Payment.QRCodeSize, cfg.Payment.QRCodeMargin),
 		alipayClient: alipayClient,
+		qrSelector:   qrSelector,
 	}
 
 	// 初始化商户信息
@@ -164,6 +172,7 @@ func (s *CodePayService) CreatePayment(params map[string]string, baseURL string)
 	paymentAmount := amount
 	amountAdjusted := false
 	adjustmentNote := ""
+	var selectedQR *config.QRCode
 
 	if s.cfg.Payment.BusinessQRMode.Enabled {
 		var err error
@@ -175,6 +184,14 @@ func (s *CodePayService) CreatePayment(params map[string]string, baseURL string)
 		if paymentAmount != amount {
 			amountAdjusted = true
 			adjustmentNote = fmt.Sprintf("检测到相同金额订单，实际支付金额已调整为 %.2f 元", paymentAmount)
+		}
+
+		// 如果启用了多二维码模式，选择一个二维码
+		if s.qrSelector != nil && s.qrSelector.IsEnabled() {
+			selectedQR, err = s.qrSelector.SelectQRCode()
+			if err != nil {
+				logger.Warn("Failed to select QR code, using default", zap.Error(err))
+			}
 		}
 	}
 
@@ -192,6 +209,12 @@ func (s *CodePayService) CreatePayment(params map[string]string, baseURL string)
 		NotifyURL:     params["notify_url"],
 		ReturnURL:     params["return_url"],
 		Sitename:      params["sitename"],
+		QRCodeID:      func() string {
+			if selectedQR != nil {
+				return selectedQR.ID
+			}
+			return ""
+		}(),
 	}
 
 	if err := s.db.CreateOrder(order); err != nil {

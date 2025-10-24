@@ -175,18 +175,46 @@ payment:
     # false: 使用动态转账二维码 / Use dynamic transfer QR code
     enabled: true
     
-    # 经营码图片路径 / Business QR code image path
+    # 经营码图片路径（单个二维码模式，向后兼容）/ Business QR code image path (single QR mode, backward compatible)
     # 将您的支付宝经营码图片保存到此路径
     # Save your Alipay business QR code image to this path
     qr_code_path: "./qrcode/business_qr.png"
     
-    # 支付宝收款码ID / Alipay collection code ID
+    # 支付宝收款码ID（单个二维码模式）/ Alipay collection code ID (single QR mode)
     # 从支付宝收款码链接中获取，例如 https://qr.alipay.com/fkx123456 中的 fkx123456
     # Extract from Alipay QR code URL, e.g., fkx123456 from https://qr.alipay.com/fkx123456
     # 填写后可在支付页面显示"拉起支付宝"按钮，方便手机用户直接打开支付宝APP
     # If filled, will show "Open Alipay" button for mobile users to open Alipay app directly
     # 留空则不显示该按钮 / Leave empty to hide the button
     qr_code_id: ""
+    
+    # 多二维码配置（可选，配置后自动启用多二维码轮询）/ Multiple QR codes configuration (optional, enables polling when configured)
+    # 配置多个二维码可以分散支付负载，减少金额冲突
+    # Configuring multiple QR codes can distribute payment load and reduce amount conflicts
+    # 注意：配置此项后，qr_code_path 和 qr_code_id 将被忽略
+    # Note: When configured, qr_code_path and qr_code_id will be ignored
+    qr_code_paths: []
+      # - id: "qr1"                               # 二维码唯一标识 / Unique QR code ID
+      #   path: "./qrcode/business_qr_1.png"      # 二维码图片路径 / QR code image path
+      #   code_id: "fkx123456"                    # 支付宝收款码ID / Alipay collection code ID
+      #   enabled: true                           # 是否启用 / Enable or not
+      #   priority: 1                             # 优先级（数字越小越高）/ Priority (lower number = higher priority)
+      # - id: "qr2"
+      #   path: "./qrcode/business_qr_2.png"
+      #   code_id: "fkx789012"
+      #   enabled: true
+      #   priority: 2
+      # - id: "qr3"
+      #   path: "./qrcode/business_qr_3.png"
+      #   code_id: "fkx345678"
+      #   enabled: true
+      #   priority: 3
+    
+    # 二维码轮询模式 / QR code polling mode
+    # round_robin: 轮询模式，依次使用每个二维码 / Round-robin, use each QR code in turn
+    # random: 随机模式，随机选择二维码 / Random mode, randomly select QR code
+    # least_used: 最少使用模式，优先使用使用次数最少的二维码 / Least-used mode, prefer least used QR code
+    polling_mode: "round_robin"
     
     # 金额偏移量（元）/ Amount offset in yuan
     # 为避免金额重复，在订单金额基础上增加的偏移量

@@ -98,6 +98,20 @@ How to integrate AliMPay into your application:
 **字数：** ~12,000 字  
 **推荐指数：** ⭐⭐⭐⭐⭐
 
+### [🔀 多二维码轮询功能 (MULTI_QRCODE.md)](MULTI_QRCODE.md)
+**适合：** 需要高并发支付处理的用户  
+**内容：**
+- 多二维码轮询功能概述
+- 三种轮询策略详解（轮询、随机、最少使用）
+- 详细配置说明
+- 使用指南和最佳实践
+- 性能优化建议
+- 故障排除
+- 迁移指南
+
+**字数：** ~7,000 字  
+**推荐指数：** ⭐⭐⭐⭐⭐
+
 ---
 
 ## ❓ 问题解答 / Troubleshooting
@@ -163,9 +177,10 @@ Got issues? Check here first:
 | DEPLOYMENT.md | ~16,800 字 | 部署指南 |
 | INTEGRATION.md | ~25,800 字 | 接入教程 |
 | API.md | ~12,000 字 | API 文档 |
+| MULTI_QRCODE.md | ~7,000 字 | 多二维码轮询 |
 | FAQ.md | ~9,900 字 | 常见问题 |
 | config.example.yaml | ~300 行 | 配置说明 |
-| **总计** | **~71,000 字** | **完整文档** |
+| **总计** | **~78,000 字** | **完整文档** |
 
 ---
 
@@ -251,6 +266,11 @@ If you can't find answers in the documentation:
 ---
 
 ## 📝 文档更新日志 / Documentation Changelog
+
+### 2024-10-24
+- ✨ 添加多二维码轮询功能文档
+- 🔀 支持三种轮询策略
+- 📝 完善配置示例和使用指南
 
 ### 2024-10-23
 - ✨ 创建完整的文档体系

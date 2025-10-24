@@ -104,7 +104,35 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 		zap.Float64("amount", amount))
 
 	// 读取经营码图片
-	qrCodePath := h.cfg.Payment.BusinessQRMode.QRCodePath
+	var qrCodePath string
+	var qrCodeID string
+
+	// 如果订单有分配的二维码ID，使用对应的二维码
+	if order.QRCodeID != "" && len(h.cfg.Payment.BusinessQRMode.QRCodePaths) > 0 {
+		found := false
+		for _, qr := range h.cfg.Payment.BusinessQRMode.QRCodePaths {
+			if qr.ID == order.QRCodeID {
+				qrCodePath = qr.Path
+				qrCodeID = qr.CodeID
+				found = true
+				logger.Info("Using assigned QR code", 
+					zap.String("qr_id", order.QRCodeID),
+					zap.String("path", qrCodePath))
+				break
+			}
+		}
+		if !found {
+			logger.Warn("Assigned QR code not found, using default",
+				zap.String("qr_id", order.QRCodeID))
+			qrCodePath = h.cfg.Payment.BusinessQRMode.QRCodePath
+			qrCodeID = h.cfg.Payment.BusinessQRMode.QRCodeID
+		}
+	} else {
+		// 使用默认二维码
+		qrCodePath = h.cfg.Payment.BusinessQRMode.QRCodePath
+		qrCodeID = h.cfg.Payment.BusinessQRMode.QRCodeID
+	}
+
 	logger.Info("Reading QR code file", zap.String("path", qrCodePath))
 
 	qrCodeData, err := os.ReadFile(qrCodePath)
@@ -151,7 +179,7 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 			"pid":            order.PID,
 		},
 		"qr_code_data": dataURI,
-		"qr_code_id":   h.cfg.Payment.BusinessQRMode.QRCodeID, // 支付宝收款码ID
+		"qr_code_id":   qrCodeID, // 支付宝收款码ID
 		"instructions": gin.H{
 			"step1": "打开支付宝，点击「扫一扫」",
 			"step2": fmt.Sprintf("扫描下方二维码，输入金额 %.2f 元", amount),
