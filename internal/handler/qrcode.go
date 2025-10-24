@@ -31,6 +31,7 @@ func NewQRCodeHandler(cfg *config.Config) *QRCodeHandler {
 func (h *QRCodeHandler) HandleQRCode(c *gin.Context) {
 	qrType := c.Query("type")
 	token := c.Query("token")
+	qrID := c.Query("id") // 二维码ID（多二维码模式）
 
 	// 验证token
 	expectedToken := h.generateToken()
@@ -41,15 +42,41 @@ func (h *QRCodeHandler) HandleQRCode(c *gin.Context) {
 
 	switch qrType {
 	case "business":
-		h.handleBusinessQRCode(c)
+		h.handleBusinessQRCode(c, qrID)
 	default:
 		c.String(http.StatusBadRequest, "Invalid QR code type")
 	}
 }
 
 // handleBusinessQRCode 处理经营码二维码
-func (h *QRCodeHandler) handleBusinessQRCode(c *gin.Context) {
-	qrCodePath := h.cfg.Payment.BusinessQRMode.QRCodePath
+func (h *QRCodeHandler) handleBusinessQRCode(c *gin.Context, qrID string) {
+	var qrCodePath string
+
+	// 如果配置了多个二维码
+	if len(h.cfg.Payment.BusinessQRMode.QRCodePaths) > 0 {
+		if qrID == "" {
+			// 未指定ID，使用第一个
+			qrCodePath = h.cfg.Payment.BusinessQRMode.QRCodePaths[0].Path
+		} else {
+			// 根据ID查找对应的二维码
+			found := false
+			for _, qr := range h.cfg.Payment.BusinessQRMode.QRCodePaths {
+				if qr.ID == qrID {
+					qrCodePath = qr.Path
+					found = true
+					break
+				}
+			}
+			if !found {
+				logger.Error("QR code not found", zap.String("id", qrID))
+				c.String(http.StatusNotFound, "QR code not found")
+				return
+			}
+		}
+	} else {
+		// 传统单二维码模式
+		qrCodePath = h.cfg.Payment.BusinessQRMode.QRCodePath
+	}
 
 	// 检查文件是否存在
 	if _, err := os.Stat(qrCodePath); os.IsNotExist(err) {

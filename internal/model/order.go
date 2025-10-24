@@ -19,6 +19,7 @@ type Order struct {
 	NotifyURL     string     `db:"notify_url" json:"notify_url"`
 	ReturnURL     string     `db:"return_url" json:"return_url"`
 	Sitename      string     `db:"sitename" json:"sitename"`
+	QRCodeID      string     `db:"qr_code_id" json:"qr_code_id"` // 分配的二维码ID
 }
 
 // OrderStatus 订单状态

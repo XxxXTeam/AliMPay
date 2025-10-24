@@ -65,12 +65,23 @@ type PaymentConfig struct {
 
 // BusinessQRMode 经营码收款模式配置
 type BusinessQRMode struct {
-	Enabled        bool    `yaml:"enabled"`
-	QRCodePath     string  `yaml:"qr_code_path"`
-	QRCodeID       string  `yaml:"qr_code_id"` // 支付宝收款码ID，用于手机端拉起支付宝
-	AmountOffset   float64 `yaml:"amount_offset"`
-	MatchTolerance int     `yaml:"match_tolerance"`
-	PaymentTimeout int     `yaml:"payment_timeout"`
+	Enabled        bool       `yaml:"enabled"`
+	QRCodePath     string     `yaml:"qr_code_path"`     // 单个二维码路径（向后兼容）
+	QRCodePaths    []QRCode   `yaml:"qr_code_paths"`    // 多个二维码配置
+	QRCodeID       string     `yaml:"qr_code_id"`       // 支付宝收款码ID，用于手机端拉起支付宝（单个模式）
+	AmountOffset   float64    `yaml:"amount_offset"`
+	MatchTolerance int        `yaml:"match_tolerance"`
+	PaymentTimeout int        `yaml:"payment_timeout"`
+	PollingMode    string     `yaml:"polling_mode"`     // 轮询模式: round_robin, random, least_used
+}
+
+// QRCode 二维码配置
+type QRCode struct {
+	ID       string `yaml:"id"`         // 二维码唯一标识
+	Path     string `yaml:"path"`       // 二维码图片路径
+	CodeID   string `yaml:"code_id"`    // 支付宝收款码ID
+	Enabled  bool   `yaml:"enabled"`    // 是否启用
+	Priority int    `yaml:"priority"`   // 优先级（数字越小优先级越高）
 }
 
 // AntiRiskURLConfig 防风控URL配置
@@ -190,6 +201,24 @@ func setDefaults(cfg *Config) {
 	}
 	if cfg.Payment.QRCodeMargin == 0 {
 		cfg.Payment.QRCodeMargin = 10
+	}
+
+	// 设置默认轮询模式
+	if cfg.Payment.BusinessQRMode.PollingMode == "" {
+		cfg.Payment.BusinessQRMode.PollingMode = "round_robin"
+	}
+
+	// 如果配置了单个二维码路径但没有配置多个二维码，自动转换为多二维码模式
+	if cfg.Payment.BusinessQRMode.QRCodePath != "" && len(cfg.Payment.BusinessQRMode.QRCodePaths) == 0 {
+		cfg.Payment.BusinessQRMode.QRCodePaths = []QRCode{
+			{
+				ID:       "default",
+				Path:     cfg.Payment.BusinessQRMode.QRCodePath,
+				CodeID:   cfg.Payment.BusinessQRMode.QRCodeID,
+				Enabled:  true,
+				Priority: 1,
+			},
+		}
 	}
 }
 
