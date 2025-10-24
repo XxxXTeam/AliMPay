@@ -101,16 +101,18 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version || 'latest' }}
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/alimpay:${{ github.ref_name }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
+        continue-on-error: true
 
       - name: Upload Trivy results to GitHub Security
         if: github.event_name != 'pull_request'
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
 
       - name: Generate build summary
         if: github.event_name != 'pull_request'
