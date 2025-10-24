@@ -1,15 +1,16 @@
 name: Docker Build and Publish
 
-# 工作流权限说明：
-# - contents: read  - 读取仓库代码
-# - packages: write - 推送镜像到 GitHub Container Registry
-# - security-events: write - 上传安全扫描结果
+# ⚠️ 如果遇到 "permission_denied: write_package" 错误：
+# 
+# 必须配置：仓库 Settings → Actions → General → Workflow permissions
+# 选择 "Read and write permissions" ✅
+# 
+# 详细配置指南：.github/GHCR_SETUP.md
 #
-# 注意：首次使用需要确保：
-# 1. 仓库 Settings → Actions → General → Workflow permissions 
-#    选择 "Read and write permissions"
-# 2. 仓库 Settings → Packages 确保包可见性设置正确
-# 3. 首次推送后，包会自动创建并关联到仓库
+# 工作流权限说明：
+# - contents: read       - 读取仓库代码
+# - packages: write      - 推送镜像到 GHCR ✅ 关键权限
+# - security-events: write - 上传安全扫描结果
 
 on:
   push:
@@ -24,25 +25,18 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read       # 读取仓库代码
-      packages: write      # 推送镜像到 GHCR
-      security-events: write  # 上传安全扫描结果
+      contents: read
+      packages: write
+      security-events: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
@@ -51,6 +45,12 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
       
       - name: Debug - Show build info
         run: |
@@ -65,7 +65,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/alimpay
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -78,6 +78,8 @@ jobs:
             org.opencontainers.image.title=AliMPay
             org.opencontainers.image.description=高性能支付宝码支付系统
             org.opencontainers.image.vendor=AliMPay Team
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.url=${{ github.server_url }}/${{ github.repository }}
 
       - name: Build and push Docker image
         id: build
@@ -131,7 +133,7 @@ jobs:
           echo "### 🚀 Pull Command:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```bash' >> $GITHUB_STEP_SUMMARY
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.REGISTRY }}/${{ github.repository_owner }}/alimpay:latest" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📊 Build Info:" >> $GITHUB_STEP_SUMMARY
