@@ -213,19 +213,19 @@ curl http://localhost:8080/api/admin/qrcode/stats
     {
       "id": "qr1",
       "usage_count": 150,
-      "last_used_time": "2024-01-15T12:30:00Z",
+      "last_used_time": "2024-10-24T12:30:00Z",
       "priority": 1
     },
     {
       "id": "qr2",
       "usage_count": 148,
-      "last_used_time": "2024-01-15T12:29:50Z",
+      "last_used_time": "2024-10-24T12:29:50Z",
       "priority": 2
     },
     {
       "id": "qr3",
       "usage_count": 152,
-      "last_used_time": "2024-01-15T12:30:10Z",
+      "last_used_time": "2024-10-24T12:30:10Z",
       "priority": 3
     }
   ]
@@ -377,7 +377,7 @@ A: 不会。QRCodeSelector 使用了高效的数据结构和算法，性能开�
 
 ## 更新日志
 
-### v1.1.0 (2024-01-15)
+### v1.1.0 (2024-10-24)
 - ✨ 新增多二维码轮询功能
 - ✨ 支持三种轮询策略：round_robin、random、least_used
 - ✨ 支持优先级配置
