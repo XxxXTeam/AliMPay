@@ -81,7 +81,8 @@ func NewAdminAuthMiddleware(merchantID, merchantKey string) *AdminAuthMiddleware
 /*
 RequireAuth 要求认证的中间件
 使用方法:
-  router.GET("/admin/dashboard", authMiddleware.RequireAuth(), handler)
+
+	router.GET("/admin/dashboard", authMiddleware.RequireAuth(), handler)
 */
 func (m *AdminAuthMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -346,4 +347,3 @@ func (m *AdminAuthMiddleware) GetActiveSessions() int {
 
 	return count
 }
-

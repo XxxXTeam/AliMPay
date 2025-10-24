@@ -111,7 +111,7 @@ func VerifySign(params map[string]string, key string) bool {
 	expectedSign := GenerateSign(params, key)
 
 	// 大小写不敏感比对（易支付兼容性）
-	return strings.ToLower(receivedSign) == strings.ToLower(expectedSign)
+	return strings.EqualFold(receivedSign, expectedSign)
 }
 
 /*
@@ -164,10 +164,10 @@ func VerifySignDebug(params map[string]string, key string) (bool, string) {
 		signStrWithKey,
 		expectedSign,
 		receivedSign,
-		strings.ToLower(receivedSign) == strings.ToLower(expectedSign),
+		strings.EqualFold(receivedSign, expectedSign),
 	)
 
-	return strings.ToLower(receivedSign) == strings.ToLower(expectedSign), debugInfo
+	return strings.EqualFold(receivedSign, expectedSign), debugInfo
 }
 
 // FormatAmount 格式化金额（保留2位小数）

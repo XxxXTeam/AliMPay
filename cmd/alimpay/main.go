@@ -63,7 +63,12 @@ func main() {
 		fmt.Printf("Failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
-	defer logger.Sync()
+	defer func() {
+		if err := logger.Sync(); err != nil {
+			// Ignore sync errors on stdout/stderr
+			fmt.Fprintf(os.Stderr, "Failed to sync logger: %v\n", err)
+		}
+	}()
 
 	// 美化的启动信息
 	logger.Highlight("AliMPay Golang Version Starting",
@@ -331,5 +336,7 @@ func main() {
 	monitorService.Stop()
 
 	logger.Info("Server stopped gracefully")
-	logger.Sync()
+	if err := logger.Sync(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to sync logger: %v\n", err)
+	}
 }

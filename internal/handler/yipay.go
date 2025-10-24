@@ -427,7 +427,13 @@ func (h *YiPayHandler) HandleCallback(c *gin.Context) {
 
 	// 发送商户回调
 	if order.NotifyURL != "" {
-		go h.codepay.SendNotification(order)
+		go func() {
+			if err := h.codepay.SendNotification(order); err != nil {
+				logger.Error("Failed to send notification",
+					zap.String("trade_no", order.ID),
+					zap.Error(err))
+			}
+		}()
 	}
 
 	c.String(http.StatusOK, "success")
@@ -446,7 +452,11 @@ func (h *YiPayHandler) HandleCheckSign(c *gin.Context) {
 	}
 
 	// 从POST表单获取
-	c.Request.ParseForm()
+	if err := c.Request.ParseForm(); err != nil {
+		logger.Error("Failed to parse form", zap.Error(err))
+		c.JSON(http.StatusBadRequest, gin.H{"code": -1, "msg": "Invalid form data"})
+		return
+	}
 	for key, values := range c.Request.PostForm {
 		if len(values) > 0 && params[key] == "" {
 			params[key] = values[0]

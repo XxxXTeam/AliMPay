@@ -40,7 +40,11 @@ func (h *SubmitHandler) HandleSubmit(c *gin.Context) {
 
 	// 从 POST 表单获取（如果存在则覆盖）
 	if c.Request.Method == "POST" {
-		c.Request.ParseForm()
+		if err := c.Request.ParseForm(); err != nil {
+			logger.Error("Failed to parse form", zap.Error(err))
+			c.JSON(http.StatusBadRequest, gin.H{"code": 0, "msg": "Invalid form data"})
+			return
+		}
 		for key, values := range c.Request.PostForm {
 			if len(values) > 0 {
 				params[key] = values[0]

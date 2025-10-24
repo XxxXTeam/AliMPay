@@ -29,7 +29,11 @@ func (h *NotifyHandler) HandleNotify(c *gin.Context) {
 
 	// 支持GET和POST
 	if c.Request.Method == "POST" {
-		c.Request.ParseForm()
+		if err := c.Request.ParseForm(); err != nil {
+			logger.Error("Failed to parse form", zap.Error(err))
+			c.String(http.StatusBadRequest, "fail")
+			return
+		}
 		for key, values := range c.Request.PostForm {
 			if len(values) > 0 {
 				params[key] = values[0]

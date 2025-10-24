@@ -24,13 +24,13 @@ type Task interface {
 // Pool Worker池
 // @description 管理固定数量的Worker goroutine，处理任务队列
 type Pool struct {
-	workerCount int              // Worker数量
-	taskQueue   chan Task        // 任务队列
-	wg          sync.WaitGroup   // 等待组，用于优雅关闭
-	ctx         context.Context  // 上下文
+	workerCount int                // Worker数量
+	taskQueue   chan Task          // 任务队列
+	wg          sync.WaitGroup     // 等待组，用于优雅关闭
+	ctx         context.Context    // 上下文
 	cancel      context.CancelFunc // 取消函数
-	started     bool             // 是否已启动
-	mu          sync.RWMutex     // 读写锁
+	started     bool               // 是否已启动
+	mu          sync.RWMutex       // 读写锁
 }
 
 // NewPool 创建Worker池
@@ -194,4 +194,3 @@ type PoolError struct {
 func (e *PoolError) Error() string {
 	return e.msg
 }
-

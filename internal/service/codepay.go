@@ -209,7 +209,7 @@ func (s *CodePayService) CreatePayment(params map[string]string, baseURL string)
 		NotifyURL:     params["notify_url"],
 		ReturnURL:     params["return_url"],
 		Sitename:      params["sitename"],
-		QRCodeID:      func() string {
+		QRCodeID: func() string {
 			if selectedQR != nil {
 				return selectedQR.ID
 			}

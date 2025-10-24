@@ -115,7 +115,7 @@ func (h *PayHandler) HandlePayPage(c *gin.Context) {
 				qrCodePath = qr.Path
 				qrCodeID = qr.CodeID
 				found = true
-				logger.Info("Using assigned QR code", 
+				logger.Info("Using assigned QR code",
 					zap.String("qr_id", order.QRCodeID),
 					zap.String("path", qrCodePath))
 				break

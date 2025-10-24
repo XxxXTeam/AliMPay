@@ -127,9 +127,13 @@ func (h *AdminWebSocketHandler) HandleWebSocket(c *gin.Context) {
 			logger.Info("Admin WebSocket client disconnected", zap.String("remote_addr", conn.RemoteAddr().String()))
 		}()
 
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+			logger.Error("Failed to set read deadline", zap.Error(err))
+		}
 		conn.SetPongHandler(func(string) error {
-			conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+			if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+				logger.Error("Failed to set read deadline in pong handler", zap.Error(err))
+			}
 			return nil
 		})
 

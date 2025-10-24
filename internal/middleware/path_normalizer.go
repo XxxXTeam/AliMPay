@@ -9,9 +9,10 @@ Description: 处理URL路径中的异常情况
   - 兼容各种客户端实现
 
 示例:
-  //submit -> /submit
-  ///api -> /api
-  /submit/ -> /submit
+
+	//submit -> /submit
+	///api -> /api
+	/submit/ -> /submit
 */
 package middleware
 
@@ -34,13 +35,15 @@ PathNormalizer 路径规范化中间件
   - 自动处理URL编码问题
 
 使用示例:
-  router.Use(middleware.PathNormalizer())
+
+	router.Use(middleware.PathNormalizer())
 
 处理示例:
-  //submit -> /submit
-  ///api/query -> /api/query
-  /submit/ -> /submit
-  /api//order -> /api/order
+
+	//submit -> /submit
+	///api/query -> /api/query
+	/submit/ -> /submit
+	/api//order -> /api/order
 */
 func PathNormalizer() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -59,7 +62,7 @@ func PathNormalizer() gin.HandlerFunc {
 		if path != originalPath {
 			// 更新请求路径
 			c.Request.URL.Path = path
-			
+
 			// 记录路径规范化（仅在debug模式）
 			if gin.Mode() == gin.DebugMode {
 				c.Set("original_path", originalPath)
@@ -126,4 +129,3 @@ func RemoveTrailingSlash() gin.HandlerFunc {
 		c.Next()
 	}
 }
-

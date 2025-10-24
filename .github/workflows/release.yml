@@ -1,10 +1,20 @@
 name: Release
 
+# 此工作流仅在推送版本标签时自动触发
+# 不要通过 workflow_dispatch 手动触发，除非您在标签上操作
+# 
+# 正确的发布流程：
+# 1. 确保所有更改已提交到 main 分支
+# 2. 创建并推送版本标签：
+#    git tag -a v1.0.0 -m "Release v1.0.0"
+#    git push origin v1.0.0
+# 3. 工作流将自动创建 GitHub Release 并构建多平台二进制文件
+
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
+  workflow_dispatch:  # 手动触发（仅用于调试，必须在标签上触发）
 
 permissions:
   contents: write
@@ -17,6 +27,8 @@ jobs:
   create-release:
     name: 创建发布
     runs-on: ubuntu-latest
+    # 只在推送标签时运行
+    if: startsWith(github.ref, 'refs/tags/')
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       version: ${{ steps.version.outputs.version }}
@@ -32,11 +44,22 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version_name=${VERSION#v}" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
       
       - name: Generate changelog
         id: changelog
         run: |
-          CHANGELOG=$(git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s" --no-merges)
+          # 获取上一个标签
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            # 如果没有上一个标签，获取所有提交
+            CHANGELOG=$(git log --pretty=format:"- %s" --no-merges)
+          else
+            # 获取两个标签之间的提交
+            CHANGELOG=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s" --no-merges)
+          fi
+          
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGELOG" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
@@ -45,7 +68,7 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
           name: Release ${{ steps.version.outputs.version }}
           body: |
             ## 🎉 AliMPay ${{ steps.version.outputs.version }}
@@ -96,6 +119,8 @@ jobs:
     name: 构建 ${{ matrix.goos }}-${{ matrix.goarch }}
     runs-on: ubuntu-latest
     needs: create-release
+    # 只在推送标签时运行
+    if: startsWith(github.ref, 'refs/tags/')
     strategy:
       fail-fast: false
       matrix:
@@ -184,6 +209,8 @@ jobs:
     name: 发布摘要
     runs-on: ubuntu-latest
     needs: [create-release, build-release]
+    # 只在推送标签时运行
+    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Generate summary
         run: |

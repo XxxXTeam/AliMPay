@@ -44,4 +44,3 @@ func GetTemplatesFS() (fs.FS, error) {
 func GetStaticFS() (fs.FS, error) {
 	return fs.Sub(Static, "static")
 }
-

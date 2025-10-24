@@ -15,13 +15,13 @@ import (
 // QRCodeSelector 二维码选择器
 // @description 负责选择和分配二维码给订单
 type QRCodeSelector struct {
-	cfg             *config.Config
-	qrCodes         []config.QRCode
-	currentIndex    int
-	usageCount      map[string]int
-	lastUsedTime    map[string]time.Time
-	mu              sync.RWMutex
-	pollingMode     string
+	cfg          *config.Config
+	qrCodes      []config.QRCode
+	currentIndex int
+	usageCount   map[string]int
+	lastUsedTime map[string]time.Time
+	mu           sync.RWMutex
+	pollingMode  string
 }
 
 // NewQRCodeSelector 创建二维码选择器
@@ -188,10 +188,10 @@ func (s *QRCodeSelector) GetStats() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"enabled":      true,
+		"enabled":       true,
 		"qr_code_count": len(s.qrCodes),
-		"polling_mode": s.pollingMode,
-		"stats":        stats,
+		"polling_mode":  s.pollingMode,
+		"stats":         stats,
 	}
 }
 

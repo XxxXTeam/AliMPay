@@ -1,5 +1,16 @@
 name: Docker Build and Publish
 
+# 工作流权限说明：
+# - contents: read  - 读取仓库代码
+# - packages: write - 推送镜像到 GitHub Container Registry
+# - security-events: write - 上传安全扫描结果
+#
+# 注意：首次使用需要确保：
+# 1. 仓库 Settings → Actions → General → Workflow permissions 
+#    选择 "Read and write permissions"
+# 2. 仓库 Settings → Packages 确保包可见性设置正确
+# 3. 首次推送后，包会自动创建并关联到仓库
+
 on:
   push:
     branches:
@@ -19,9 +30,9 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write
-      security-events: write
+      contents: read       # 读取仓库代码
+      packages: write      # 推送镜像到 GHCR
+      security-events: write  # 上传安全扫描结果
 
     steps:
       - name: Checkout repository
@@ -40,6 +51,15 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Debug - Show build info
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Ref Name: ${{ github.ref_name }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Repository: ${{ github.repository }}"
+          echo "Is Default Branch: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}"
 
       - name: Extract metadata
         id: meta

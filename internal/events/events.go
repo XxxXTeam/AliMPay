@@ -10,14 +10,15 @@ Description: 提供应用级事件发布/订阅机制
   - 支持多订阅者
 
 使用示例:
-  // 订阅事件
-  events.Subscribe(events.EventOrderPaid, func(data interface{}) {
-      order := data.(*model.Order)
-      // 处理订单支付事件
-  })
 
-  // 发布事件
-  events.Publish(events.EventOrderPaid, order)
+	// 订阅事件
+	events.Subscribe(events.EventOrderPaid, func(data interface{}) {
+	    order := data.(*model.Order)
+	    // 处理订单支付事件
+	})
+
+	// 发布事件
+	events.Publish(events.EventOrderPaid, order)
 */
 package events
 
@@ -34,9 +35,9 @@ import (
 事件类型定义
 */
 const (
-	EventOrderPaid    = "order:paid"     // 订单支付成功
-	EventOrderExpired = "order:expired"  // 订单过期
-	EventOrderCreated = "order:created"  // 订单创建
+	EventOrderPaid    = "order:paid"    // 订单支付成功
+	EventOrderExpired = "order:expired" // 订单过期
+	EventOrderCreated = "order:created" // 订单创建
 )
 
 /*
@@ -183,4 +184,3 @@ func GetStats() map[string]interface{} {
 		"event_types":   len(globalBus.handlers),
 	}
 }
-

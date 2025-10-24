@@ -175,11 +175,15 @@ func (h *WebSocketHandler) handleConnection(conn *websocket.Conn, orderID string
 	}()
 
 	// 设置读取超时
-	conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+		logger.Error("Failed to set read deadline", zap.Error(err))
+	}
 
 	// 设置pong处理器
 	conn.SetPongHandler(func(string) error {
-		conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		if err := conn.SetReadDeadline(time.Now().Add(60 * time.Second)); err != nil {
+			logger.Error("Failed to set read deadline in pong handler", zap.Error(err))
+		}
 		return nil
 	})
 
@@ -235,7 +239,9 @@ func (h *WebSocketHandler) sendInitialStatus(conn *websocket.Conn, orderID strin
 	}
 
 	data, _ := json.Marshal(message)
-	conn.WriteMessage(websocket.TextMessage, data)
+	if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+		logger.Error("Failed to write message to websocket", zap.Error(err))
+	}
 }
 
 /*
