@@ -178,7 +178,12 @@ func (s *BillQueryService) FindPaymentByMemo(billData map[string]interface{}, or
 
 		// 解析金额
 		var amount float64
-		fmt.Sscanf(amountStr, "%f", &amount)
+		if _, err := fmt.Sscanf(amountStr, "%f", &amount); err != nil {
+			logger.Warn("Failed to parse amount",
+				zap.String("amount_str", amountStr),
+				zap.Error(err))
+			continue
+		}
 
 		// 匹配金额（允许0.01的误差）
 		if amount < expectedAmount-0.01 || amount > expectedAmount+0.01 {

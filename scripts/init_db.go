@@ -27,7 +27,9 @@ func main() {
 		Format: "console",
 		Output: "stdout",
 	}
-	logger.Init(logCfg)
+	if err := logger.Init(logCfg); err != nil {
+		panic(fmt.Sprintf("Failed to initialize logger: %v", err))
+	}
 
 	// 初始化数据库
 	dbCfg := &database.Config{

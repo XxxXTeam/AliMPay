@@ -23,14 +23,20 @@ func GenerateMerchantID() string {
 // GenerateMerchantKey 生成商户密钥
 func GenerateMerchantKey() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// 如果随机数生成失败，使用时间戳作为fallback
+		return fmt.Sprintf("%032x", time.Now().UnixNano())
+	}
 	return hex.EncodeToString(b)
 }
 
 // RandomInt 生成随机整数
 func RandomInt(min, max int) int {
 	b := make([]byte, 4)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		// 如果随机数生成失败，使用时间戳作为fallback
+		return min + int(time.Now().UnixNano()%(int64(max-min+1)))
+	}
 	n := int(b[0])<<24 | int(b[1])<<16 | int(b[2])<<8 | int(b[3])
 	if n < 0 {
 		n = -n

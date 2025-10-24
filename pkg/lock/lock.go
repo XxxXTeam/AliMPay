@@ -73,12 +73,16 @@ func (fl *FileLock) TryLock() (bool, error) {
 
 	data, err := json.Marshal(lockInfo)
 	if err != nil {
-		fl.Unlock()
+		if unlockErr := fl.Unlock(); unlockErr != nil {
+			logger.Error("Failed to unlock after marshal error", zap.Error(unlockErr))
+		}
 		return false, fmt.Errorf("failed to marshal lock info: %w", err)
 	}
 
 	if _, err := file.Write(data); err != nil {
-		fl.Unlock()
+		if unlockErr := fl.Unlock(); unlockErr != nil {
+			logger.Error("Failed to unlock after write error", zap.Error(unlockErr))
+		}
 		return false, fmt.Errorf("failed to write lock info: %w", err)
 	}
 

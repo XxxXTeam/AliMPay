@@ -305,7 +305,7 @@ func main() {
 	fmt.Printf("║  Merchant Key:    %-35s ║\n", merchantInfo["key"])
 	fmt.Printf("║  Monitor:         %-35s ║\n", fmt.Sprintf("Enabled (Interval: %ds)", cfg.Monitor.Interval))
 	fmt.Printf("║  Mode:            %-35s ║\n", cfg.Server.Mode)
-	fmt.Println("╚════════════════════════════════════════════════════════╝\n")
+	fmt.Println("╚════════════════════════════════════════════════════════╝")
 
 	logger.Success("Server started successfully",
 		zap.String("address", addr),

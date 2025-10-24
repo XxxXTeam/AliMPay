@@ -173,7 +173,11 @@ func (m *MonitorService) RunMonitoringCycle() {
 	if !acquired {
 		return // 另一个周期正在运行
 	}
-	defer fileLock.Unlock()
+	defer func() {
+		if err := fileLock.Unlock(); err != nil {
+			logger.Error("Failed to unlock file", zap.Error(err))
+		}
+	}()
 
 	// 1. 清理过期订单
 	if m.cfg.Payment.AutoCleanup {
@@ -303,7 +307,12 @@ func (m *MonitorService) queryRecentBills() ([]BillRecord, error) {
 
 		amountStr, _ := detail["trans_amount"].(string)
 		var amount float64
-		fmt.Sscanf(amountStr, "%f", &amount)
+		if _, err := fmt.Sscanf(amountStr, "%f", &amount); err != nil {
+			logger.Warn("Failed to parse amount",
+				zap.String("amount_str", amountStr),
+				zap.Error(err))
+			continue
+		}
 
 		bill := BillRecord{
 			TradeNo:   detail["alipay_order_no"].(string),
@@ -365,7 +374,13 @@ func (m *MonitorService) queryRecentBillsForQRCode(qrCodeID string) ([]BillRecor
 
 		amountStr, _ := detail["trans_amount"].(string)
 		var amount float64
-		fmt.Sscanf(amountStr, "%f", &amount)
+		if _, err := fmt.Sscanf(amountStr, "%f", &amount); err != nil {
+			logger.Warn("Failed to parse amount for QR code",
+				zap.String("qr_code_id", qrCodeID),
+				zap.String("amount_str", amountStr),
+				zap.Error(err))
+			continue
+		}
 
 		bill := BillRecord{
 			TradeNo:   detail["alipay_order_no"].(string),

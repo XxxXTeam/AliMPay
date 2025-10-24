@@ -12,12 +12,14 @@ Description: 为静态资源和页面添加适当的缓存控制头
 package middleware
 
 import (
+	"alimpay-go/pkg/logger"
 	"crypto/md5"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 /*
@@ -145,7 +147,9 @@ func ETagMiddleware() gin.HandlerFunc {
 		}
 
 		// 写入实际响应
-		writer.ResponseWriter.Write(writer.body)
+		if _, err := writer.ResponseWriter.Write(writer.body); err != nil {
+			logger.Error("Failed to write response body", zap.Error(err))
+		}
 	}
 }
 
