@@ -16,13 +16,12 @@ COPY . .
 # 构建应用
 ARG VERSION=dev
 ARG BUILD_TIME
-# 设置 CGO 标志以支持 SQLite 在 Alpine 上编译
 ENV CGO_CFLAGS="-D_LARGEFILE64_SOURCE"
 RUN CGO_ENABLED=1 GOOS=linux go build \
     -tags "sqlite_omit_load_extension" \
     -ldflags="-s -w -X main.Version=${VERSION} -X main.BuildTime=${BUILD_TIME}" \
     -o alimpay \
-    ./cmd/alimpay
+    ./cmd/main.go
 
 # 运行阶段
 FROM alpine:latest
