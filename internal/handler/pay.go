@@ -10,7 +10,7 @@ import (
 
 	"alimpay-go/internal/config"
 	"alimpay-go/internal/database"
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

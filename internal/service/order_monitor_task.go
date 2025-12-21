@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"alimpay-go/internal/model"
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 
 	"go.uber.org/zap"
 )

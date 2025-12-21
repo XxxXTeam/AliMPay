@@ -12,8 +12,8 @@ import (
 	"alimpay-go/internal/events"
 	"alimpay-go/internal/model"
 	"alimpay-go/internal/worker"
-	"alimpay-go/pkg/lock"
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/lock"
+	"alimpay-go/internal/pkg/logger"
 
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"

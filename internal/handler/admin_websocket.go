@@ -31,7 +31,7 @@ import (
 	"alimpay-go/internal/database"
 	"alimpay-go/internal/events"
 	"alimpay-go/internal/model"
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"

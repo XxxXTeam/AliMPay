@@ -23,8 +23,13 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   REGISTRY: ghcr.io
+  GO_VERSION: '1.23'
 
 jobs:
   build-and-push:

@@ -7,7 +7,7 @@ import (
 
 	"alimpay-go/internal/config"
 	"alimpay-go/internal/database"
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 )
 
 func main() {

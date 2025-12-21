@@ -1,13 +1,27 @@
 package middleware
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"time"
 
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
+
+// RequestIDKey 请求ID在上下文中的键名
+const RequestIDKey = "request_id"
+
+// generateRequestID 生成唯一请求ID
+func generateRequestID() string {
+	b := make([]byte, 8)
+	if _, err := rand.Read(b); err != nil {
+		return time.Now().Format("20060102150405.000")
+	}
+	return hex.EncodeToString(b)
+}
 
 // Logger 日志中间件
 func Logger() gin.HandlerFunc {
@@ -15,6 +29,14 @@ func Logger() gin.HandlerFunc {
 		start := time.Now()
 		path := c.Request.URL.Path
 		query := c.Request.URL.RawQuery
+
+		// 生成并设置请求ID
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = generateRequestID()
+		}
+		c.Set(RequestIDKey, requestID)
+		c.Header("X-Request-ID", requestID)
 
 		// 处理请求
 		c.Next()
@@ -38,6 +60,7 @@ func Logger() gin.HandlerFunc {
 		// 根据状态码决定日志级别
 		if statusCode >= 500 {
 			logger.Error("Server Error",
+				zap.String("request_id", requestID),
 				zap.String("method", method),
 				zap.String("path", path),
 				zap.String("query", query),
@@ -48,6 +71,7 @@ func Logger() gin.HandlerFunc {
 			)
 		} else if statusCode >= 400 {
 			logger.Warn("Client Error",
+				zap.String("request_id", requestID),
 				zap.String("method", method),
 				zap.String("path", path),
 				zap.String("query", query),
@@ -84,7 +108,9 @@ func Recovery() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
+				requestID, _ := c.Get(RequestIDKey)
 				logger.Error("Panic recovered",
+					zap.Any("request_id", requestID),
 					zap.Any("error", err),
 					zap.String("path", c.Request.URL.Path),
 					zap.String("method", c.Request.Method),
@@ -95,4 +121,14 @@ func Recovery() gin.HandlerFunc {
 		}()
 		c.Next()
 	}
+}
+
+// GetRequestID 从上下文获取请求ID
+func GetRequestID(c *gin.Context) string {
+	if requestID, exists := c.Get(RequestIDKey); exists {
+		if id, ok := requestID.(string); ok {
+			return id
+		}
+	}
+	return ""
 }

@@ -3,12 +3,13 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"alimpay-go/internal/config"
 	"alimpay-go/internal/service"
 	"alimpay-go/internal/validator"
-	"alimpay-go/pkg/logger"
-	"alimpay-go/pkg/utils"
+	"alimpay-go/internal/pkg/logger"
+	"alimpay-go/internal/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -251,7 +252,7 @@ func (h *APIHandler) handleHealth(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"code":      1,
 		"msg":       "System is healthy",
-		"timestamp": "2006-01-02 15:04:05",
+		"timestamp": time.Now().Format("2006-01-02 15:04:05"),
 	})
 }
 

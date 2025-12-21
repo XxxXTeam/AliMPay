@@ -12,7 +12,7 @@ Description: 为静态资源和页面添加适当的缓存控制头
 package middleware
 
 import (
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 	"crypto/md5"
 	"fmt"
 	"strings"

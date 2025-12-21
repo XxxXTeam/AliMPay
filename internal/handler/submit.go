@@ -5,8 +5,8 @@ import (
 
 	"alimpay-go/internal/config"
 	"alimpay-go/internal/service"
-	"alimpay-go/pkg/logger"
-	"alimpay-go/pkg/utils"
+	"alimpay-go/internal/pkg/logger"
+	"alimpay-go/internal/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

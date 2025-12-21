@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"alimpay-go/internal/config"
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 
 	"go.uber.org/zap"
 )

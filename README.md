@@ -721,29 +721,33 @@ AliMPay 完全兼容易支付和码支付标准接口。
 ### 项目结构
 
 ```
-alimpay-go/
-├── cmd/alimpay/          # 主程序入口
-├── internal/             # 内部包
-│   ├── config/          # 配置管理
-│   ├── database/        # 数据库操作
-│   ├── handler/         # HTTP处理器
-│   ├── middleware/      # 中间件
-│   ├── model/           # 数据模型
-│   ├── service/         # 业务逻辑
-│   └── validator/       # 参数验证
-├── pkg/                 # 公共包
-│   ├── cache/          # 缓存
-│   ├── lock/           # 锁机制
-│   ├── logger/         # 日志
-│   ├── qrcode/         # 二维码生成
-│   └── utils/          # 工具函数
-├── web/                # 前端资源
-│   ├── static/         # 静态文件
-│   └── templates/      # HTML模板
-├── configs/            # 配置文件
-├── data/               # 数据目录
-├── logs/               # 日志目录
-└── qrcode/             # 二维码目录
+AliMPay/
+├── cmd/alimpay/           # 主程序入口
+├── configs/               # 配置文件
+├── data/                  # 数据目录
+├── logs/                  # 日志目录
+├── qrcode/                # 二维码目录
+└── internal/              # 内部包（所有核心代码）
+    ├── config/            # 配置管理
+    ├── database/          # 数据库操作
+    ├── events/            # 事件系统
+    ├── handler/           # HTTP处理器
+    ├── middleware/        # 中间件
+    ├── model/             # 数据模型
+    ├── pkg/               # 工具包
+    │   ├── cache/         # 缓存
+    │   ├── lock/          # 锁机制
+    │   ├── logger/        # 日志
+    │   ├── qrcode/        # 二维码生成
+    │   └── utils/         # 工具函数
+    ├── response/          # 响应处理
+    ├── scripts/           # 脚本工具
+    ├── service/           # 业务逻辑
+    ├── validator/         # 参数验证
+    ├── web/               # 前端资源
+    │   ├── static/        # 静态文件
+    │   └── templates/     # HTML模板
+    └── worker/            # 工作池
 ```
 
 ### Make 命令

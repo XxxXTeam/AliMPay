@@ -7,7 +7,7 @@ import (
 	"context"
 	"sync"
 
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 
 	"go.uber.org/zap"
 )

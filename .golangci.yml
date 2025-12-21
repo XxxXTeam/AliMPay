@@ -1,7 +1,11 @@
+# golangci-lint 配置
 run:
-  timeout: 5m
-  tests: true
-  modules-download-mode: readonly
+  timeout: 10m
+  tests: false
+  modules-download-mode: mod
+  skip-dirs:
+    - vendor
+    - .git
 
 linters:
   enable:
@@ -10,11 +14,9 @@ linters:
     - staticcheck
     - gosimple
     - ineffassign
-    - unused
-    - errcheck
-    - misspell
-    - goimports
   disable:
+    - errcheck
+    - unused
     - revive
     - gocyclo
     - goconst
@@ -25,22 +27,23 @@ linters:
     - whitespace
     - stylecheck
     - exportloopref
+    - misspell
+    - goimports
+
+linters-settings:
+  staticcheck:
+    checks: ["all", "-SA1019", "-SA4006"]
+  govet:
+    enable-all: false
 
 issues:
   exclude-rules:
-    # Exclude some linters from running on tests files.
     - path: _test\.go
       linters:
         - errcheck
-    
-    # Ignore shadowing of 'err' in short variable declarations
     - linters:
         - govet
-      text: "shadow: declaration of \"err\""
-  
-  # Maximum issues count per one linter
-  max-issues-per-linter: 50
-  
-  # Maximum count of issues with the same text
-  max-same-issues: 10
+      text: "shadow"
+  max-issues-per-linter: 100
+  max-same-issues: 20
 

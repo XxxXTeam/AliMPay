@@ -20,8 +20,8 @@ import (
 	"alimpay-go/internal/handler"
 	"alimpay-go/internal/middleware"
 	"alimpay-go/internal/service"
-	"alimpay-go/pkg/logger"
-	"alimpay-go/web"
+	"alimpay-go/internal/pkg/logger"
+	"alimpay-go/internal/web"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

@@ -36,7 +36,7 @@ import (
 	"alimpay-go/internal/database"
 	"alimpay-go/internal/events"
 	"alimpay-go/internal/model"
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -345,7 +345,7 @@ formatPayTime 格式化支付时间
   - string: 格式化的支付时间，如果未支付返回空字符串
 */
 func (h *WebSocketHandler) formatPayTime(order *model.Order) string {
-	if order.Status == model.OrderStatusPaid && !order.PayTime.IsZero() {
+	if order.Status == model.OrderStatusPaid && order.PayTime != nil && !order.PayTime.IsZero() {
 		return order.PayTime.Format("2006-01-02 15:04:05")
 	}
 	return ""
@@ -353,9 +353,7 @@ func (h *WebSocketHandler) formatPayTime(order *model.Order) string {
 
 /*
 GetStats 获取WebSocket统计信息
-功能: 返回当前WebSocket连接状态
-返回:
-  - map[string]interface{}: 统计信息
+返回: 统计信息
 */
 func (h *WebSocketHandler) GetStats() map[string]interface{} {
 	h.mu.RLock()

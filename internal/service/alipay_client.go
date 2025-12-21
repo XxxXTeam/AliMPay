@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"alimpay-go/internal/config"
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 
 	"go.uber.org/zap"
 )
@@ -100,6 +100,12 @@ func NewAlipayClient(cfg *config.AlipayConfig) (*AlipayClient, error) {
 func (c *AlipayClient) parsePrivateKey() error {
 	privateKeyStr := c.cfg.PrivateKey
 
+	// 检查是否为空或占位符
+	if privateKeyStr == "" || len(privateKeyStr) < 100 {
+		logger.Warn("Private key not configured or too short, Alipay API will be unavailable")
+		return nil // 允许启动，但API功能不可用
+	}
+
 	// 如果私钥不包含 PEM 头尾，添加它们
 	if !strings.Contains(privateKeyStr, "BEGIN") {
 		privateKeyStr = fmt.Sprintf("-----BEGIN RSA PRIVATE KEY-----\n%s\n-----END RSA PRIVATE KEY-----", privateKeyStr)
@@ -107,7 +113,8 @@ func (c *AlipayClient) parsePrivateKey() error {
 
 	block, _ := pem.Decode([]byte(privateKeyStr))
 	if block == nil {
-		return fmt.Errorf("failed to decode PEM block")
+		logger.Warn("Failed to decode private key PEM block, Alipay API will be unavailable")
+		return nil // 允许启动，但API功能不可用
 	}
 
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
@@ -115,12 +122,15 @@ func (c *AlipayClient) parsePrivateKey() error {
 		// 尝试 PKCS8 格式
 		pkcs8Key, err2 := x509.ParsePKCS8PrivateKey(block.Bytes)
 		if err2 != nil {
-			return fmt.Errorf("failed to parse private key: %v, %v", err, err2)
+			logger.Warn("Failed to parse private key, Alipay API will be unavailable",
+				zap.Error(err), zap.Error(err2))
+			return nil // 允许启动，但API功能不可用
 		}
 		var ok bool
 		privateKey, ok = pkcs8Key.(*rsa.PrivateKey)
 		if !ok {
-			return fmt.Errorf("not RSA private key")
+			logger.Warn("Not RSA private key, Alipay API will be unavailable")
+			return nil
 		}
 	}
 
@@ -132,6 +142,12 @@ func (c *AlipayClient) parsePrivateKey() error {
 func (c *AlipayClient) parsePublicKey() error {
 	publicKeyStr := c.cfg.AlipayPublicKey
 
+	// 检查是否为空或占位符
+	if publicKeyStr == "" || len(publicKeyStr) < 100 {
+		logger.Warn("Public key not configured or too short, signature verification will be unavailable")
+		return nil
+	}
+
 	// 如果公钥不包含 PEM 头尾，添加它们
 	if !strings.Contains(publicKeyStr, "BEGIN") {
 		publicKeyStr = fmt.Sprintf("-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----", publicKeyStr)
@@ -139,17 +155,20 @@ func (c *AlipayClient) parsePublicKey() error {
 
 	block, _ := pem.Decode([]byte(publicKeyStr))
 	if block == nil {
-		return fmt.Errorf("failed to decode PEM block")
+		logger.Warn("Failed to decode public key PEM block, signature verification will be unavailable")
+		return nil
 	}
 
 	publicKeyInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return fmt.Errorf("failed to parse public key: %w", err)
+		logger.Warn("Failed to parse public key, signature verification will be unavailable", zap.Error(err))
+		return nil
 	}
 
 	publicKey, ok := publicKeyInterface.(*rsa.PublicKey)
 	if !ok {
-		return fmt.Errorf("not RSA public key")
+		logger.Warn("Not RSA public key, signature verification will be unavailable")
+		return nil
 	}
 
 	c.publicKey = publicKey

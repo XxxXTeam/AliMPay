@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"alimpay-go/internal/model"
-	"alimpay-go/pkg/logger"
+	"alimpay-go/internal/pkg/logger"
 
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
@@ -339,7 +339,7 @@ func (db *DB) GetOrders(pid string, limit int) ([]*model.Order, error) {
 		err := rows.Scan(
 			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
@@ -350,6 +350,10 @@ func (db *DB) GetOrders(pid string, limit int) ([]*model.Order, error) {
 		}
 
 		orders = append(orders, &order)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
 	}
 
 	return orders, nil
@@ -385,7 +389,7 @@ func (db *DB) GetOrdersByStatus(status int) ([]*model.Order, error) {
 		err := rows.Scan(
 			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
@@ -435,7 +439,7 @@ func (db *DB) GetTodayOrdersByStatus(status int) ([]*model.Order, error) {
 		err := rows.Scan(
 			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
@@ -520,7 +524,7 @@ func (db *DB) GetRecentOrders(limit int) ([]*model.Order, error) {
 		err := rows.Scan(
 			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
@@ -560,7 +564,7 @@ func (db *DB) GetPendingOrdersSince(since time.Time) ([]*model.Order, error) {
 		err := rows.Scan(
 			&order.ID, &order.OutTradeNo, &order.Type, &order.PID, &order.Name,
 			&order.Price, &order.PaymentAmount, &order.Status, &order.AddTime,
-			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
+			&payTime, &order.NotifyURL, &order.ReturnURL, &order.Sitename, &order.QRCodeID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan order: %w", err)
